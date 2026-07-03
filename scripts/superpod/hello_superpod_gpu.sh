@@ -37,6 +37,12 @@ echo "SLURM_SUBMIT_HOST: ${SLURM_SUBMIT_HOST:-<unset>}"
 echo "SLURM_CPUS_PER_TASK: ${SLURM_CPUS_PER_TASK:-<unset>}"
 echo "SLURM_GPUS_PER_NODE: ${SLURM_GPUS_PER_NODE:-<unset>}"
 echo ""
+echo "--- Host GPU info (before container) ---"
+nvidia-smi || echo "nvidia-smi not available on host"
+echo "NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-<unset>}"
+echo "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-<unset>}"
+echo ""
+
 echo "--- SuperPOD env loaded from superpod.env ---"
 echo "SUPERPOD_ACCOUNT: ${SUPERPOD_ACCOUNT}"
 echo "SUPERPOD_PARTITION_GPU: ${SUPERPOD_PARTITION_GPU}"
@@ -54,22 +60,29 @@ if [[ ! -f "$CONTAINER_PATH" ]]; then
 fi
 
 echo "Container: $CONTAINER_PATH"
+
+# Try with --container-runtime=nvidia first; if the cluster does not support it,
+# remove it and rely on Pyxis defaults.
 srun --container-image "$CONTAINER_PATH" \
+     --container-runtime=nvidia \
      --container-mounts "/project:/project,/home:/home" \
      --container-writable \
      --container-workdir "$PROJECT_DIR" \
-     bash -c "
-        echo 'Inside container:'
+     bash -c '
+        echo "Inside container:"
+        echo "NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-<unset>}"
+        echo "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-<unset>}"
+        nvidia-smi || echo "nvidia-smi not found in container"
         python --version
-        python - <<'PY'
+        python - <<"PY"
 import torch
-print('PyTorch version:', torch.__version__)
-print('CUDA available:', torch.cuda.is_available())
+print("PyTorch version:", torch.__version__)
+print("CUDA available:", torch.cuda.is_available())
 if torch.cuda.is_available():
-    print('Device count:', torch.cuda.device_count())
-    print('Device name:', torch.cuda.get_device_name(0))
+    print("Device count:", torch.cuda.device_count())
+    print("Device name:", torch.cuda.get_device_name(0))
 PY
-     "
+     '
 
 echo ""
 echo "========================================"
