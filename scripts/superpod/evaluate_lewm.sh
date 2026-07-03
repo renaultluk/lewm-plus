@@ -37,6 +37,8 @@ srun --container-image "$CONTAINER_PATH" \
      --container-workdir "$PROJECT_DIR" \
      bash -c "
         export STABLEWM_HOME=${STABLEWM_HOME}
-        source .venv/bin/activate
+        # The container already ships its venv at /workspace/.venv.
+        export PATH=/workspace/.venv/bin:/root/.local/bin:\$PATH
+        export VIRTUAL_ENV=/workspace/.venv
         python eval.py \$@
      "

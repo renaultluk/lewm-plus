@@ -39,6 +39,8 @@ srun --container-image "$CONTAINER_PATH" \
      bash -c "
         export STABLEWM_HOME=${STABLEWM_HOME}
         export WANDB_DISABLED=${WANDB_DISABLED:-false}
-        source .venv/bin/activate
+        # The container already ships its venv at /workspace/.venv.
+        export PATH=/workspace/.venv/bin:/root/.local/bin:\$PATH
+        export VIRTUAL_ENV=/workspace/.venv
         python train.py \$@
      "
