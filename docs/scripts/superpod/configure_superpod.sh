@@ -56,6 +56,9 @@ for f in "$SCRIPT_DIR"/*.sh; do
             ;;
     esac
 
+    # Only touch scripts that still have Slurm placeholders.
+    grep -q '{{ACCOUNT}}\|{{PARTITION_GPU}}\|{{PARTITION_CPU}}' "$f" || continue
+
     sed -i \
         -e "s/{{ACCOUNT}}/${ACCOUNT}/g" \
         -e "s/{{PARTITION_GPU}}/${PARTITION_GPU}/g" \
