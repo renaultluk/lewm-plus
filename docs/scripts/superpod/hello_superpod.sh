@@ -6,8 +6,8 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
-#SBATCH --account={{ACCOUNT}}
-#SBATCH --partition={{PARTITION_CPU}}
+#SBATCH --account=mscbdt2024
+#SBATCH --partition=cpu
 #SBATCH --time=00:05:00
 
 # Hello-world job for SuperPOD.
@@ -16,8 +16,9 @@
 
 set -euo pipefail
 
+SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
 # shellcheck source=docs/scripts/superpod/_common.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_common.sh"
+source "${SUBMIT_DIR}/docs/scripts/superpod/_common.sh"
 
 echo "========================================"
 echo "Hello from SuperPOD!"

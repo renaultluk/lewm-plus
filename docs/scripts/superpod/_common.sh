@@ -2,12 +2,17 @@
 # Common helpers for all SuperPOD scripts.
 #
 # Usage in other scripts:
-#   source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_common.sh"
+#   source "${SUBMIT_DIR}/docs/scripts/superpod/_common.sh"
+#
+# SUBMIT_DIR should be set by the caller to the directory from which the job
+# was submitted (the repo root). For batch scripts this is typically
+# $SLURM_SUBMIT_DIR; for interactive/local scripts it is the repo root.
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="${SCRIPT_DIR}/superpod.env"
+# Allow callers to override the config directory (useful for tests).
+SUPERPOD_CONFIG_DIR="${SUPERPOD_CONFIG_DIR:-${SUBMIT_DIR}/docs/scripts/superpod}"
+ENV_FILE="${SUPERPOD_CONFIG_DIR}/superpod.env"
 
 if [[ -f "$ENV_FILE" ]]; then
     # shellcheck source=/dev/null

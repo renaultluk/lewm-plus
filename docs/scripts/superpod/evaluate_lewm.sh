@@ -7,8 +7,8 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=28
 #SBATCH --gpus-per-node=1
-#SBATCH --account={{ACCOUNT}}
-#SBATCH --partition={{PARTITION_GPU}}
+#SBATCH --account=mscbdt2024
+#SBATCH --partition=normal
 #SBATCH --time=06:00:00
 
 # LeWorldModel evaluation batch script for HKUST SuperPOD.
@@ -21,8 +21,9 @@
 
 set -euo pipefail
 
+SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
 # shellcheck source=docs/scripts/superpod/_common.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_common.sh"
+source "${SUBMIT_DIR}/docs/scripts/superpod/_common.sh"
 
 cd "$PROJECT_DIR"
 mkdir -p outputs

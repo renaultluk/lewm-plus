@@ -9,8 +9,9 @@
 
 set -euo pipefail
 
+SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
 # shellcheck source=docs/scripts/superpod/_common.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_common.sh"
+source "${SUBMIT_DIR}/docs/scripts/superpod/_common.sh"
 
 LOCAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 REMOTE="${SUPERPOD_USER}@superpod.ust.hk:${PROJECT_DIR}"
