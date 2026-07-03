@@ -20,9 +20,6 @@ set -euo pipefail
 
 REPOS=(
     quentinll/lewm-pusht
-    quentinll/lewm-reacher
-    quentinll/lewm-cube
-    quentinll/lewm-tworooms
 )
 
 SCRATCH_DATA="/scratch/{{GROUP}}/datasets"
@@ -42,5 +39,6 @@ for repo in "${REPOS[@]}"; do
     hf download "$repo" --repo-type dataset --local-dir "$SCRATCH_DATA/${repo##*/}"
 done
 
-echo "All downloads finished. Extract .tar.zst archives with:"
-echo "  cd $SCRATCH_DATA/<repo>/ && tar --zstd -xvf *.tar.zst"
+echo "All downloads finished. Extract tar archives and move .h5 files with:"
+echo "  cd $SCRATCH_DATA/<repo>/ && tar -xvf *.tar.zst"
+echo "  mv $SCRATCH_DATA/<repo>/*.h5 /project/{{GROUP}}/lewm-plus/.stable-wm/datasets/"
