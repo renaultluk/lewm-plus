@@ -7,22 +7,28 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --account={{ACCOUNT}}
-#SBATCH --partition=cpu
+#SBATCH --partition={{PARTITION_CPU}}
 #SBATCH --time=06:00:00
 
 # Download official LeWM datasets from HuggingFace to scratch storage.
-# After the job finishes, move extracted .h5 files from /scratch/<GROUP>/datasets
-# to /project/<GROUP>/lewm-plus/.stable-wm/datasets/ for long-term storage.
+#
+# Usage:
+#   sbatch docs/scripts/superpod/download_datasets.sh
 #
 # Edit the REPOS list below to download only what you need.
 
 set -euo pipefail
 
+# shellcheck source=docs/scripts/superpod/_common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_common.sh"
+
+# After the job finishes, move extracted .h5 files from $SCRATCH_DATA
+# to $STABLEWM_HOME/datasets/ for long-term storage.
+
 REPOS=(
     quentinll/lewm-pusht
 )
 
-SCRATCH_DATA="/scratch/{{GROUP}}/datasets"
 mkdir -p "$SCRATCH_DATA"
 cd "$SCRATCH_DATA"
 
@@ -41,4 +47,4 @@ done
 
 echo "All downloads finished. Extract tar archives and move .h5 files with:"
 echo "  cd $SCRATCH_DATA/<repo>/ && tar -xvf *.tar.zst"
-echo "  mv $SCRATCH_DATA/<repo>/*.h5 /project/{{GROUP}}/lewm-plus/.stable-wm/datasets/"
+echo "  mv $SCRATCH_DATA/<repo>/*.h5 $STABLEWM_HOME/datasets/"

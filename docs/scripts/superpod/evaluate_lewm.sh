@@ -8,32 +8,34 @@
 #SBATCH --cpus-per-task=28
 #SBATCH --gpus-per-node=1
 #SBATCH --account={{ACCOUNT}}
-#SBATCH --partition=normal
+#SBATCH --partition={{PARTITION_GPU}}
 #SBATCH --time=06:00:00
 
 # LeWorldModel evaluation batch script for HKUST SuperPOD.
 #
 # Usage:
-#   sbatch docs/scripts/superpod/evaluate_lewm.sh --config-name=pusht.yaml policy=pusht/lewm eval.num_eval=50
+#   sbatch docs/scripts/superpod/evaluate_lewm.sh \
+#       --config-name=pusht.yaml policy=pusht/lewm eval.num_eval=50
 #
 # All arguments are forwarded to python eval.py.
 
 set -euo pipefail
 
-PROJECT_DIR="/project/{{GROUP}}/lewm-plus"
-CONTAINER="$HOME/containers/lewm.sqsh"
+# shellcheck source=docs/scripts/superpod/_common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_common.sh"
 
 cd "$PROJECT_DIR"
 mkdir -p outputs
 
+# Combined list of extra mounts. Add /scratch/<GROUP> if you keep raw data there.
 MOUNTS="/project:/project,/home:/home"
 
-srun --container-image "$CONTAINER" \
+srun --container-image "$CONTAINER_PATH" \
      --container-mounts "$MOUNTS" \
      --container-writable \
      --container-workdir "$PROJECT_DIR" \
      bash -c "
-        export STABLEWM_HOME=${PROJECT_DIR}/.stable-wm
+        export STABLEWM_HOME=${STABLEWM_HOME}
         source .venv/bin/activate
-        python eval.py $@
+        python eval.py \$@
      "

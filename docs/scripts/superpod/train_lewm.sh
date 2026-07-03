@@ -8,21 +8,22 @@
 #SBATCH --cpus-per-task=28
 #SBATCH --gpus-per-node=1
 #SBATCH --account={{ACCOUNT}}
-#SBATCH --partition=normal
+#SBATCH --partition={{PARTITION_GPU}}
 #SBATCH --time=12:00:00
 
 # LeWorldModel training batch script for HKUST SuperPOD.
 #
 # Usage:
-#   sbatch docs/scripts/superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100 output_model_name=pusht_replicate wandb.enabled=false
+#   sbatch docs/scripts/superpod/train_lewm.sh \
+#       data=pusht_h5 trainer.max_epochs=100 output_model_name=pusht_replicate wandb.enabled=false
 #
-# The script changes to /project/<GROUP>/lewm-plus, activates the container,
-# and passes all command-line arguments to python train.py.
+# The script sources superpod.env, changes to $PROJECT_DIR, activates the
+# container, and passes all command-line arguments to python train.py.
 
 set -euo pipefail
 
-PROJECT_DIR="/project/{{GROUP}}/lewm-plus"
-CONTAINER="$HOME/containers/lewm.sqsh"
+# shellcheck source=docs/scripts/superpod/_common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_common.sh"
 
 cd "$PROJECT_DIR"
 mkdir -p outputs
@@ -30,13 +31,13 @@ mkdir -p outputs
 # Combined list of extra mounts. Add /scratch/<GROUP> if you keep raw data there.
 MOUNTS="/project:/project,/home:/home"
 
-srun --container-image "$CONTAINER" \
+srun --container-image "$CONTAINER_PATH" \
      --container-mounts "$MOUNTS" \
      --container-writable \
      --container-workdir "$PROJECT_DIR" \
      bash -c "
-        export STABLEWM_HOME=${PROJECT_DIR}/.stable-wm
+        export STABLEWM_HOME=${STABLEWM_HOME}
         export WANDB_DISABLED=${WANDB_DISABLED:-false}
         source .venv/bin/activate
-        python train.py $@
+        python train.py \$@
      "

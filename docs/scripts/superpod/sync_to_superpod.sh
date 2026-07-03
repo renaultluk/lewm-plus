@@ -9,8 +9,11 @@
 
 set -euo pipefail
 
+# shellcheck source=docs/scripts/superpod/_common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_common.sh"
+
 LOCAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-REMOTE="{{USER}}@superpod.ust.hk:/project/{{GROUP}}/lewm-plus"
+REMOTE="${SUPERPOD_USER}@superpod.ust.hk:${PROJECT_DIR}"
 
 echo "Syncing $LOCAL_DIR -> $REMOTE"
 

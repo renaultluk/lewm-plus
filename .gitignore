@@ -24,3 +24,6 @@ __pycache__/
 outputs/
 venv/
 wandb/
+
+# SuperPOD local configuration (contains user/group-specific values)
+docs/scripts/superpod/superpod.env

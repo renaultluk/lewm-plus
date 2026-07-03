@@ -135,11 +135,49 @@ workflow is recommended for long experiments.
 All scripts below live in `docs/scripts/superpod/` and should be copied to
 `/project/<GROUP>/lewm-plus/` on SuperPOD.
 
-### 5.1 Dashboard / quick commands
+### 5.1 Configuration file
+
+All user- and group-specific values are centralized in a single file:
+
+```text
+docs/scripts/superpod/superpod.env
+```
+
+A template is provided as `superpod.env.example`. To generate your own config:
+
+```bash
+cd /project/<GROUP>/lewm-plus
+bash docs/scripts/superpod/configure_superpod.sh
+```
+
+This interactively asks for your Slurm account, partitions, group, and username,
+then writes `superpod.env` and substitutes Slurm placeholders in the batch
+scripts. `superpod.env` is ignored by Git so your credentials stay local.
+
+Variables you can tune in `superpod.env`:
+
+| Variable                  | Meaning                                         | Example         |
+| ------------------------- | ----------------------------------------------- | --------------- |
+| `SUPERPOD_ACCOUNT`        | Slurm account                                   | `cse`           |
+| `SUPERPOD_PARTITION_GPU`  | GPU partition                                   | `normal`        |
+| `SUPERPOD_PARTITION_CPU`  | CPU partition                                   | `cpu`           |
+| `SUPERPOD_GROUP`          | Project group (used in `/project`, `/scratch`)  | `cse`           |
+| `SUPERPOD_USER`           | Your HKUST username                             | `renaultluk`    |
+| `PROJECT_DIR`             | Repository root on SuperPOD                     | `/project/...`  |
+| `CONTAINER_PATH`          | Path to the Enroot `.sqsh` container            | `~/containers/...` |
+| `CPUS_PER_TASK`           | CPU cores for GPU jobs                          | `28`            |
+| `CPUS_PER_TASK_CPU`       | CPU cores for CPU jobs                          | `8`             |
+| `STABLEWM_HOME`           | Dataset/checkpoint root                         | `$PROJECT_DIR/.stable-wm` |
+| `SCRATCH_DATA`            | Scratch directory for raw downloads             | `/scratch/.../datasets`   |
+
+After changing `superpod.env`, rerun `configure_superpod.sh` to update the
+batch-script Slurm directives.
+
+### 5.2 Dashboard / quick commands
 
 ```bash
 # Submit a LeWM training job
-sbatch docs/scripts/superpod/train_lewm.sh --data=pusht_h5 --epochs=100
+sbatch docs/scripts/superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100
 
 # Check queue
 squeue --me
@@ -151,19 +189,15 @@ scancel <JOBID>
 sacct -j <JOBID> --format=JobID,JobName,Partition,State,ExitCode,Elapsed
 ```
 
-### 5.2 Batch scripts
+### 5.3 Batch scripts
 
 | Script                         | Purpose                                            |
 | ------------------------------ | -------------------------------------------------- |
 | `train_lewm.sh`                | Generic training job with container                |
 | `evaluate_lewm.sh`             | Generic evaluation job with container              |
-| `interactive_gpu.sh`           | Request a 1-hour GPU shell for debugging           |
+| `interactive_gpu.sh`           | Request a GPU shell for debugging                  |
 | `download_datasets.sh`         | Use `hf` to download official datasets to scratch  |
 | `sync_to_superpod.sh`          | One-command rsync from local machine               |
-
-Each script is templated with `{{USER}}`, `{{GROUP}}`, and `{{ACCOUNT}}`
-placeholders. Replace them by editing the script once, or use the
-`configure_superpod.sh` helper described below.
 
 ## 6. Step-by-Step: Run an Official Training Job on SuperPOD
 
@@ -182,8 +216,11 @@ cd /project/<GROUP>/lewm-plus
 bash docs/scripts/superpod/configure_superpod.sh
 ```
 
-It asks for your `ACCOUNT`, `GROUP`, and `USER`, then writes the values into
-all batch scripts under `docs/scripts/superpod/`.
+It asks for your account, partitions, group, and username, then writes them
+to `docs/scripts/superpod/superpod.env` and updates the Slurm directives in the
+batch scripts. All other scripts read their settings from `superpod.env` at
+runtime, so there is only one place to change when moving between clusters or
+users.
 
 ### Step 2 — Download/verify datasets
 
@@ -199,7 +236,7 @@ extracts it. Move the final `.h5` to `.stable-wm/datasets/` when done.
 ### Step 3 — Submit training
 
 ```bash
-sbatch docs/scripts/superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100 output_model_name=pusht_lewm_replicate
+sbatch docs/scripts/superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100 output_model_name=pusht_h5_replicate
 ```
 
 Training output goes to `outputs/train-<JOBID>.out` and checkpoints are saved
@@ -217,7 +254,7 @@ sacct -j <JOBID> --format=JobID,Partition,State,ExitCode,Elapsed,ReqTRES
 ```bash
 sbatch docs/scripts/superpod/evaluate_lewm.sh \
     --config-name=pusht.yaml \
-    policy=pusht_lewm_replicate \
+    policy=pusht_h5_replicate/pusht_h5_replicate \
     eval.num_eval=50
 ```
 
