@@ -10,6 +10,15 @@ ENV PYTHONUNBUFFERED=1
 ENV PIP_NO_CACHE_DIR=1
 ENV UV_LINK_MODE=copy
 
+# Add deadsnakes PPA for Python 3.10 on Ubuntu 24.04
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    gnupg \
+    software-properties-common \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && rm -rf /var/lib/apt/lists/*
+
 # Minimal runtime and build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
