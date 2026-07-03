@@ -64,7 +64,7 @@ RUN if [ -f pyproject.toml ] && [ -f uv.lock ]; then \
       echo "No pyproject.toml found; installing pinned fallback packages..." && \
       uv venv --python=3.10 /workspace/.venv && \
       VIRTUAL_ENV=/workspace/.venv uv pip install --no-cache \
-        torch torchvision \
+        torch torchvision --index-url https://download.pytorch.org/whl/cu126 \
         stable-worldmodel[train] \
         datasets \
         imageio imageio-ffmpeg moviepy \
