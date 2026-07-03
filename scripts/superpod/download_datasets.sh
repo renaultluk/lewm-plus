@@ -6,22 +6,22 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --account=mscbdt2024
-#SBATCH --partition=cpu
+#SBATCH --account={{ACCOUNT}}
+#SBATCH --partition={{PARTITION_CPU}}
 #SBATCH --time=06:00:00
 
 # Download official LeWM datasets from HuggingFace to scratch storage.
 #
 # Usage:
-#   sbatch docs/scripts/superpod/download_datasets.sh
+#   sbatch scripts/superpod/download_datasets.sh
 #
 # Edit the REPOS list below to download only what you need.
 
 set -euo pipefail
 
 SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
-# shellcheck source=docs/scripts/superpod/_common.sh
-source "${SUBMIT_DIR}/docs/scripts/superpod/_common.sh"
+# shellcheck source=scripts/superpod/_common.sh
+source "${SUBMIT_DIR}/scripts/superpod/_common.sh"
 
 # After the job finishes, move extracted .h5 files from $SCRATCH_DATA
 # to $STABLEWM_HOME/datasets/ for long-term storage.

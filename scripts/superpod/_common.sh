@@ -2,7 +2,7 @@
 # Common helpers for all SuperPOD scripts.
 #
 # Usage in other scripts:
-#   source "${SUBMIT_DIR}/docs/scripts/superpod/_common.sh"
+#   source "${SUBMIT_DIR}/scripts/superpod/_common.sh"
 #
 # SUBMIT_DIR should be set by the caller to the directory from which the job
 # was submitted (the repo root). For batch scripts this is typically
@@ -11,15 +11,20 @@
 set -euo pipefail
 
 # Allow callers to override the config directory (useful for tests).
-SUPERPOD_CONFIG_DIR="${SUPERPOD_CONFIG_DIR:-${SUBMIT_DIR}/docs/scripts/superpod}"
+# If SUBMIT_DIR is unset, fall back to the repo root derived from this file's location.
+if [[ -z "${SUBMIT_DIR:-}" ]]; then
+    SUBMIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+fi
+SUPERPOD_CONFIG_DIR="${SUPERPOD_CONFIG_DIR:-${SUBMIT_DIR}/scripts/superpod}"
 ENV_FILE="${SUPERPOD_CONFIG_DIR}/superpod.env"
+
 
 if [[ -f "$ENV_FILE" ]]; then
     # shellcheck source=/dev/null
     source "$ENV_FILE"
 else
     echo "ERROR: SuperPOD config not found at $ENV_FILE" >&2
-    echo "Copy docs/scripts/superpod/superpod.env.example to superpod.env and fill it in." >&2
+    echo "Copy scripts/superpod/superpod.env.example to superpod.env and fill it in." >&2
     exit 1
 fi
 

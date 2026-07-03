@@ -18,8 +18,8 @@
 set -euo pipefail
 
 SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
-# shellcheck source=docs/scripts/superpod/_common.sh
-source "${SUBMIT_DIR}/docs/scripts/superpod/_common.sh"
+# shellcheck source=scripts/superpod/_common.sh
+source "${SUBMIT_DIR}/scripts/superpod/_common.sh"
 
 echo "========================================"
 echo "Hello from SuperPOD GPU node!"

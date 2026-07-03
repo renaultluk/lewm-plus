@@ -7,14 +7,14 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=28
 #SBATCH --gpus-per-node=1
-#SBATCH --account=mscbdt2024
-#SBATCH --partition=normal
+#SBATCH --account={{ACCOUNT}}
+#SBATCH --partition={{PARTITION_GPU}}
 #SBATCH --time=12:00:00
 
 # LeWorldModel training batch script for HKUST SuperPOD.
 #
 # Usage:
-#   sbatch docs/scripts/superpod/train_lewm.sh \
+#   sbatch scripts/superpod/train_lewm.sh \
 #       data=pusht_h5 trainer.max_epochs=100 output_model_name=pusht_replicate wandb.enabled=false
 #
 # The script sources superpod.env, changes to $PROJECT_DIR, activates the
@@ -23,8 +23,8 @@
 set -euo pipefail
 
 SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
-# shellcheck source=docs/scripts/superpod/_common.sh
-source "${SUBMIT_DIR}/docs/scripts/superpod/_common.sh"
+# shellcheck source=scripts/superpod/_common.sh
+source "${SUBMIT_DIR}/scripts/superpod/_common.sh"
 
 cd "$PROJECT_DIR"
 mkdir -p outputs

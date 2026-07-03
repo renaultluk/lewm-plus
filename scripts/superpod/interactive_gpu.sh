@@ -2,7 +2,7 @@
 # Request an interactive GPU session on SuperPOD.
 #
 # Usage:
-#   bash docs/scripts/superpod/interactive_gpu.sh [hours]
+#   bash scripts/superpod/interactive_gpu.sh [hours]
 #
 # Default duration is 1 hour. The session lands on a compute node where you
 # can debug commands, inspect GPUs, or run short tests.
@@ -10,8 +10,8 @@
 set -euo pipefail
 
 SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
-# shellcheck source=docs/scripts/superpod/_common.sh
-source "${SUBMIT_DIR}/docs/scripts/superpod/_common.sh"
+# shellcheck source=scripts/superpod/_common.sh
+source "${SUBMIT_DIR}/scripts/superpod/_common.sh"
 
 HOURS="${1:-1}"
 # Format as HH:MM:SS

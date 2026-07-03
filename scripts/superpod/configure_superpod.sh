@@ -3,7 +3,7 @@
 # then substitute Slurm placeholders in all SuperPOD batch scripts.
 #
 # Usage:
-#   bash docs/scripts/superpod/configure_superpod.sh
+#   bash scripts/superpod/configure_superpod.sh
 
 set -euo pipefail
 
@@ -69,4 +69,4 @@ done
 
 echo ""
 echo "Done. Review superpod.env, then submit jobs with:"
-echo "  sbatch docs/scripts/superpod/train_lewm.sh data=pusht_h5 ..."
+echo "  sbatch scripts/superpod/train_lewm.sh data=pusht_h5 ..."

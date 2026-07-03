@@ -2,7 +2,7 @@
 # Sync the local lewm-plus project to SuperPOD /project storage.
 #
 # Usage:
-#   bash docs/scripts/superpod/sync_to_superpod.sh
+#   bash scripts/superpod/sync_to_superpod.sh
 #
 # Excludes heavy transient directories (.stable-wm/datasets, .venv, outputs,
 # .git, etc.) so only code, configs, and helper scripts are copied.
@@ -10,8 +10,8 @@
 set -euo pipefail
 
 SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
-# shellcheck source=docs/scripts/superpod/_common.sh
-source "${SUBMIT_DIR}/docs/scripts/superpod/_common.sh"
+# shellcheck source=scripts/superpod/_common.sh
+source "${SUBMIT_DIR}/scripts/superpod/_common.sh"
 
 LOCAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 REMOTE="${SUPERPOD_USER}@superpod.ust.hk:${PROJECT_DIR}"

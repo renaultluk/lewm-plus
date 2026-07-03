@@ -7,14 +7,14 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=28
 #SBATCH --gpus-per-node=1
-#SBATCH --account=mscbdt2024
-#SBATCH --partition=normal
+#SBATCH --account={{ACCOUNT}}
+#SBATCH --partition={{PARTITION_GPU}}
 #SBATCH --time=06:00:00
 
 # LeWorldModel evaluation batch script for HKUST SuperPOD.
 #
 # Usage:
-#   sbatch docs/scripts/superpod/evaluate_lewm.sh \
+#   sbatch scripts/superpod/evaluate_lewm.sh \
 #       --config-name=pusht.yaml policy=pusht/lewm eval.num_eval=50
 #
 # All arguments are forwarded to python eval.py.
@@ -22,8 +22,8 @@
 set -euo pipefail
 
 SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
-# shellcheck source=docs/scripts/superpod/_common.sh
-source "${SUBMIT_DIR}/docs/scripts/superpod/_common.sh"
+# shellcheck source=scripts/superpod/_common.sh
+source "${SUBMIT_DIR}/scripts/superpod/_common.sh"
 
 cd "$PROJECT_DIR"
 mkdir -p outputs
