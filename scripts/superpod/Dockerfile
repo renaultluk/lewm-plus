@@ -1,5 +1,5 @@
 # Container for running LeWorldModel on HKUST SuperPOD
-# Build locally:   docker build -f docs/scripts/superpod/Dockerfile -t lewm:superpod .
+# Build locally:   docker build -f scripts/superpod/Dockerfile -t lewm:superpod .
 # Convert:         docker save lewm:superpod | enroot import -o lewm.sqsh -
 # Upload:          rsync -avP lewm.sqsh <USER>@superpod.ust.hk:~/containers/
 
@@ -37,12 +37,20 @@ ENV PATH="/root/.local/bin:${PATH}"
 
 WORKDIR /workspace
 
-# Copy dependency file and install Python packages first for layer caching
-COPY pyproject.toml uv.lock* ./
-RUN if [ -f uv.lock ]; then \
+# If the repo root has pyproject.toml / uv.lock, use them. Otherwise fall back
+# to a pinned package list. The COPY is split so missing files do not abort the
+# build; the dependency installation happens in a single RUN step.
+COPY pyproject.toml* uv.lock* ./
+RUN if [ -f pyproject.toml ] && [ -f uv.lock ]; then \
+      echo "Installing from uv.lock..." && \
+      uv venv --python=3.10 /workspace/.venv && \
+      VIRTUAL_ENV=/workspace/.venv uv pip install --no-cache -r pyproject.toml; \
+    elif [ -f pyproject.toml ]; then \
+      echo "Installing from pyproject.toml..." && \
       uv venv --python=3.10 /workspace/.venv && \
       VIRTUAL_ENV=/workspace/.venv uv pip install --no-cache -r pyproject.toml; \
     else \
+      echo "No pyproject.toml found; installing pinned fallback packages..." && \
       uv venv --python=3.10 /workspace/.venv && \
       VIRTUAL_ENV=/workspace/.venv uv pip install --no-cache \
         torch torchvision \
