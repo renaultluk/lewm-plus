@@ -61,10 +61,9 @@ fi
 
 echo "Container: $CONTAINER_PATH"
 
-# Try with --container-runtime=nvidia first; if the cluster does not support it,
-# remove it and rely on Pyxis defaults.
+# Pyxis should automatically bind NVIDIA devices for GPU jobs. If it does not,
+# run 'scontrol show config | grep -i gres' and check that gres/gpu is configured.
 srun --container-image "$CONTAINER_PATH" \
-     --container-runtime=nvidia \
      --container-mounts "/project:/project,/home:/home" \
      --container-writable \
      --container-workdir "$PROJECT_DIR" \
