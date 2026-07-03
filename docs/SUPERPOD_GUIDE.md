@@ -80,7 +80,7 @@ container image in `/home`:
 
 /project/<GROUP>/lewm-plus/
 ├── le-wm/                        # this repository
-├── scripts/superpod/        # helper scripts from this guide
+├── scripts/superpod/             # helper scripts from this guide
 ├── .stable-wm/                   # stable-worldmodel home
 │   ├── checkpoints/              # LeWM checkpoints
 │   └── datasets/                 # extracted HDF5 / Lance datasets
@@ -103,8 +103,10 @@ We provide a Dockerfile in the repo:
 
 ```bash
 # On your local machine (Linux with Docker + nvidia-container-toolkit)
+# Make sure your Docker daemon socket is reachable from WSL/Linux,
+# e.g. /var/run/docker.sock exists.
 docker build -f scripts/superpod/Dockerfile -t lewm:superpod .
-docker save lewm:superpod | enroot import -o lewm.sqsh -
+enroot import -o lewm.sqsh dockerd://lewm:superpod
 ```
 
 Upload the image:

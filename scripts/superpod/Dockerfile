@@ -1,6 +1,6 @@
 # Container for running LeWorldModel on HKUST SuperPOD
 # Build locally:   docker build -f scripts/superpod/Dockerfile -t lewm:superpod .
-# Convert:         docker save lewm:superpod | enroot import -o lewm.sqsh -
+# Convert:         enroot import -o lewm.sqsh dockerd://lewm:superpod
 # Upload:          rsync -avP lewm.sqsh <USER>@superpod.ust.hk:~/containers/
 
 FROM nvidia/cuda:12.8.0-cudnn-devel-ubuntu24.04
