@@ -1,0 +1,26 @@
+
+# Checkpoints and datasets (large files)
+# Logs
+# Python
+# Stable-worldmodel runtime data
+# Training outputs
+# Virtual environments
+*.ckpt
+*.egg-info/
+*.err
+*.h5
+*.lance/
+*.log
+*.out
+*.pt
+*.pth
+*.py[cod]
+*.zst
+.ipynb_checkpoints/
+.stable-wm/
+.stable_worldmodel
+.venv/
+__pycache__/
+outputs/
+venv/
+wandb/

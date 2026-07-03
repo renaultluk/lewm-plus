@@ -1,0 +1,33 @@
+#!/bin/bash
+# Sync the local lewm-plus project to SuperPOD /project storage.
+#
+# Usage:
+#   bash docs/scripts/superpod/sync_to_superpod.sh
+#
+# Excludes heavy transient directories (.stable-wm/datasets, .venv, outputs,
+# .git, etc.) so only code, configs, and helper scripts are copied.
+
+set -euo pipefail
+
+LOCAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+REMOTE="{{USER}}@superpod.ust.hk:/project/{{GROUP}}/lewm-plus"
+
+echo "Syncing $LOCAL_DIR -> $REMOTE"
+
+rsync -avP \
+    --exclude='.git' \
+    --exclude='.stable-wm' \
+    --exclude='.venv' \
+    --exclude='outputs' \
+    --exclude='__pycache__' \
+    --exclude='*.pyc' \
+    --exclude='*.egg-info' \
+    --exclude='.pytest_cache' \
+    --exclude='*.ckpt' \
+    --exclude='*.pt' \
+    --exclude='*.h5' \
+    --exclude='*.zst' \
+    --exclude='*.lance' \
+    "$LOCAL_DIR/" "$REMOTE/"
+
+echo "Done. Datasets, checkpoints, and .venv are excluded; sync them separately if needed."
