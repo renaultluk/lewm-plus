@@ -79,8 +79,9 @@ RUN if [ -f pyproject.toml ] && [ -f uv.lock ]; then \
 
 # The repo code is mounted at runtime via --container-mounts, so we do not
 # copy the source into the image. This keeps the image reusable.
-# STABLEWM_HOME is set at runtime to avoid shadowing the host cluster layout.
+# On SuperPOD we mount the host's PROJECT_DIR/.stable-wm to /workspace/.stable-wm.
 
+ENV STABLEWM_HOME=/workspace/.stable-wm
 ENV VIRTUAL_ENV=/workspace/.venv
 ENV PATH="/workspace/.venv/bin:${PATH}"
 

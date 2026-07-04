@@ -48,18 +48,15 @@ fi
 cd "$PROJECT_DIR"
 mkdir -p outputs
 
-# Combined list of extra mounts. Add /scratch/<GROUP> if you keep raw data there.
-MOUNTS="/project:/project,/home:/home"
+# Combined list of extra mounts. We also map the host's .stable-wm directory
+# to /workspace/.stable-wm inside the container, which matches the Dockerfile.
+MOUNTS="/project:/project,/home:/home,${STABLEWM_HOME}:/workspace/.stable-wm"
 
 # On some compute nodes srun is a wrapper that requires the slurm module.
 module load slurm 2>/dev/null || true
 
-# Export only the variables we need into the container step. We pass them
-# explicitly via srun --export so the container image's own defaults are
-# overridden (notably the old STABLEWM_HOME=/workspace/.stable-wm).
 srun --container-image "$CONTAINER_PATH" \
      --container-mounts "$MOUNTS" \
      --container-writable \
      --container-workdir "$PROJECT_DIR" \
-     --export="STABLEWM_HOME=${STABLEWM_HOME},PATH=/workspace/.venv/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin,VIRTUAL_ENV=/workspace/.venv" \
      /workspace/.venv/bin/python eval.py "$@"
