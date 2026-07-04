@@ -47,6 +47,52 @@ fi
 cd "$PROJECT_DIR"
 mkdir -p outputs
 
+# Quick preflight for the official PushT HDF5 path. The dataset resolver expects
+# the file at $STABLEWM_HOME/datasets/pusht_expert_train.h5 (not nested).
+USE_PUSHT_H5=false
+HAS_DATASET_NAME_OVERRIDE=false
+for arg in "$@"; do
+    if [[ "$arg" == "data=pusht_h5" ]]; then
+        USE_PUSHT_H5=true
+    fi
+    if [[ "$arg" == data.dataset.name=* ]]; then
+        HAS_DATASET_NAME_OVERRIDE=true
+    fi
+done
+
+DATASET_NAME_OVERRIDE=""
+if [[ " $* " == *" data=pusht_h5 "* ]]; then
+    EXPECTED_H5="${STABLEWM_HOME}/datasets/pusht_expert_train.h5"
+    NESTED_H5="${STABLEWM_HOME}/datasets/pusht/pusht_expert_train.h5"
+    NESTED_ZST="${STABLEWM_HOME}/datasets/pusht/pusht_expert_train.h5.zst"
+    CONTAINER_NESTED_H5="/workspace/.stable-wm/datasets/pusht/pusht_expert_train.h5"
+
+    if [[ "$HAS_DATASET_NAME_OVERRIDE" == true ]]; then
+        :
+    elif [[ -f "$EXPECTED_H5" ]]; then
+        :
+    elif [[ -f "$NESTED_H5" ]]; then
+        echo "INFO: using nested PushT HDF5 path: $NESTED_H5" >&2
+        DATASET_NAME_OVERRIDE="data.dataset.name=${CONTAINER_NESTED_H5}"
+    else
+        echo "ERROR: expected dataset not found: $EXPECTED_H5" >&2
+
+        if [[ -f "$NESTED_ZST" ]]; then
+            echo "Found compressed archive at: $NESTED_ZST" >&2
+            echo "Extract and move with:" >&2
+            echo "  mkdir -p \"${STABLEWM_HOME}/datasets\"" >&2
+            echo "  zstd -d \"$NESTED_ZST\" -o \"$EXPECTED_H5\"" >&2
+        fi
+
+        exit 1
+    fi
+fi
+
+EXTRA_ARGS=()
+if [[ -n "$DATASET_NAME_OVERRIDE" ]]; then
+    EXTRA_ARGS+=("$DATASET_NAME_OVERRIDE")
+fi
+
 # Combined list of extra mounts. We also map the host's .stable-wm directory
 # to /workspace/.stable-wm inside the container, which matches the Dockerfile.
 MOUNTS="/project:/project,/home:/home,${STABLEWM_HOME}:/workspace/.stable-wm"
@@ -58,4 +104,4 @@ srun --container-image "$CONTAINER_PATH" \
      --container-mounts "$MOUNTS" \
      --container-writable \
      --container-workdir "$PROJECT_DIR" \
-     /workspace/.venv/bin/python train.py "$@"
+     /workspace/.venv/bin/python train.py "${EXTRA_ARGS[@]}" "$@"
