@@ -50,16 +50,17 @@ mkdir -p outputs
 # Combined list of extra mounts. Add /scratch/<GROUP> if you keep raw data there.
 MOUNTS="/project:/project,/home:/home"
 
-# Set environment variables that need to be visible inside the container.
-# --container-env preserves them from the host Slurm step.
-export STABLEWM_HOME="${STABLEWM_HOME}"
-export WANDB_DISABLED="${WANDB_DISABLED:-false}"
-export PATH=/workspace/.venv/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-export VIRTUAL_ENV=/workspace/.venv
-
+# Use --export to pass environment into the container step, then run python
+# through bash so we can set the container venv PATH/VIRTUAL_ENV.
 srun --container-image "$CONTAINER_PATH" \
      --container-mounts "$MOUNTS" \
      --container-writable \
      --container-workdir "$PROJECT_DIR" \
-     --container-env=STABLEWM_HOME,WANDB_DISABLED,PATH,VIRTUAL_ENV \
-     /workspace/.venv/bin/python train.py "$@"
+     --export=ALL \
+     bash -c '
+        export STABLEWM_HOME="'"${STABLEWM_HOME}"'"
+        export WANDB_DISABLED="'"${WANDB_DISABLED:-false}"'"
+        export PATH=/workspace/.venv/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+        export VIRTUAL_ENV=/workspace/.venv
+        exec /workspace/.venv/bin/python train.py "$@"
+     ' bash "$@"
