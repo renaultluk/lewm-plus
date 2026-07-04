@@ -51,6 +51,9 @@ mkdir -p outputs
 # Combined list of extra mounts. Add /scratch/<GROUP> if you keep raw data there.
 MOUNTS="/project:/project,/home:/home"
 
+# On some compute nodes srun is a wrapper that requires the slurm module.
+module load slurm 2>/dev/null || true
+
 # Use --export to pass environment into the container step, then run python
 # through bash so we can set the container venv PATH/VIRTUAL_ENV.
 srun --container-image "$CONTAINER_PATH" \
