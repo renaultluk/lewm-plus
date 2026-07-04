@@ -26,4 +26,4 @@ venv/
 wandb/
 
 # SuperPOD local configuration (contains user/group-specific values)
-scripts/superpod/superpod.env
+superpod/superpod.env

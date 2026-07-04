@@ -2,16 +2,16 @@
 # LeWorldModel training batch script for HKUST SuperPOD.
 #
 # Usage:
-#   bash scripts/superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100 output_model_name=pusht_replicate wandb.enabled=false
+#   bash superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100 output_model_name=pusht_replicate wandb.enabled=false
 #
-# This script reads scripts/superpod/superpod.env and self-submits to Slurm.
+# This script reads superpod/superpod.env and self-submits to Slurm.
 # No separate configure step is required after superpod.env exists.
 
 set -euo pipefail
 
 SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-# shellcheck source=scripts/superpod/_common.sh
-source "${SUBMIT_DIR}/scripts/superpod/_common.sh"
+# shellcheck source=superpod/_common.sh
+source "${SUBMIT_DIR}/superpod/_common.sh"
 
 # If not already inside a Slurm job, generate a batch script and submit it.
 if [[ -z "${SLURM_JOB_ID:-}" ]]; then

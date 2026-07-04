@@ -4,13 +4,13 @@
 # the superpod.env setup from a GPU compute node.
 #
 # Usage:
-#   bash scripts/superpod/hello_superpod_gpu.sh
+#   bash superpod/hello_superpod_gpu.sh
 
 set -euo pipefail
 
 SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-# shellcheck source=scripts/superpod/_common.sh
-source "${SUBMIT_DIR}/scripts/superpod/_common.sh"
+# shellcheck source=superpod/_common.sh
+source "${SUBMIT_DIR}/superpod/_common.sh"
 
 # If not already inside a Slurm job, generate a batch script and submit it.
 if [[ -z "${SLURM_JOB_ID:-}" ]]; then

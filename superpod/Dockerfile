@@ -1,5 +1,5 @@
 # Container for running LeWorldModel on HKUST SuperPOD
-# Build locally:   docker build -f scripts/superpod/Dockerfile -t lewm:superpod .
+# Build locally:   docker build -f superpod/Dockerfile -t lewm:superpod .
 # Convert:         enroot import -o lewm.sqsh dockerd://lewm:superpod
 # Upload:          rsync -avP lewm.sqsh <USER>@superpod.ust.hk:~/containers/
 

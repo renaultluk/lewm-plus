@@ -4,13 +4,13 @@
 # verifies that the STABLEWM_HOME directory is writable from the job.
 #
 # Usage:
-#   bash scripts/superpod/hello_superpod.sh
+#   bash superpod/hello_superpod.sh
 
 set -euo pipefail
 
 SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-# shellcheck source=scripts/superpod/_common.sh
-source "${SUBMIT_DIR}/scripts/superpod/_common.sh"
+# shellcheck source=superpod/_common.sh
+source "${SUBMIT_DIR}/superpod/_common.sh"
 
 # If not already inside a Slurm job, generate a batch script and submit it.
 if [[ -z "${SLURM_JOB_ID:-}" ]]; then

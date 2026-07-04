@@ -1,10 +1,10 @@
 #!/bin/bash
-# Generate scripts/superpod/superpod.env by interactively asking for
+# Generate superpod/superpod.env by interactively asking for
 # account/partition/group/user. This is a one-time setup step; once the env
 # file exists, all other scripts read from it directly at submit/runtime.
 #
 # Usage:
-#   bash scripts/superpod/configure_superpod.sh
+#   bash superpod/configure_superpod.sh
 
 set -euo pipefail
 
@@ -57,6 +57,6 @@ EOF
 echo ""
 echo "Wrote ${ENV_FILE}"
 echo "You can now submit jobs directly, e.g.:"
-echo "  bash scripts/superpod/hello_superpod.sh"
-echo "  bash scripts/superpod/hello_superpod_gpu.sh"
-echo "  bash scripts/superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100"
+echo "  bash superpod/hello_superpod.sh"
+echo "  bash superpod/hello_superpod_gpu.sh"
+echo "  bash superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100"

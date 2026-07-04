@@ -2,16 +2,16 @@
 # Download official LeWM datasets from HuggingFace to scratch storage.
 #
 # Usage:
-#   bash scripts/superpod/download_datasets.sh
+#   bash superpod/download_datasets.sh
 #
 # Edit the REPOS list below to download only what you need.
-# This script reads scripts/superpod/superpod.env and self-submits to Slurm.
+# This script reads superpod/superpod.env and self-submits to Slurm.
 
 set -euo pipefail
 
 SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-# shellcheck source=scripts/superpod/_common.sh
-source "${SUBMIT_DIR}/scripts/superpod/_common.sh"
+# shellcheck source=superpod/_common.sh
+source "${SUBMIT_DIR}/superpod/_common.sh"
 
 # If not already inside a Slurm job, generate a batch script and submit it.
 if [[ -z "${SLURM_JOB_ID:-}" ]]; then

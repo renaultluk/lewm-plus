@@ -2,7 +2,7 @@
 # Common helpers for all SuperPOD scripts.
 #
 # Usage in other scripts:
-#   source "${SUBMIT_DIR}/scripts/superpod/_common.sh"
+#   source "${SUBMIT_DIR}/superpod/_common.sh"
 #
 # SUBMIT_DIR should be set by the caller to the directory from which the job
 # was submitted (the repo root). For batch scripts this is typically
@@ -16,7 +16,7 @@ if [[ -z "${SUBMIT_DIR:-}" ]]; then
 fi
 
 # Allow callers to override the config directory (useful for tests).
-SUPERPOD_CONFIG_DIR="${SUPERPOD_CONFIG_DIR:-${SUBMIT_DIR}/scripts/superpod}"
+SUPERPOD_CONFIG_DIR="${SUPERPOD_CONFIG_DIR:-${SUBMIT_DIR}/superpod}"
 ENV_FILE="${SUPERPOD_CONFIG_DIR}/superpod.env"
 
 if [[ -f "$ENV_FILE" ]]; then
@@ -24,7 +24,7 @@ if [[ -f "$ENV_FILE" ]]; then
     source "$ENV_FILE"
 else
     echo "ERROR: SuperPOD config not found at $ENV_FILE" >&2
-    echo "Run: bash scripts/superpod/configure_superpod.sh" >&2
+    echo "Run: bash superpod/configure_superpod.sh" >&2
     exit 1
 fi
 
