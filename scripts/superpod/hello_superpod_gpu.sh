@@ -1,4 +1,25 @@
 #!/bin/bash
+# GPU hello-world job for SuperPOD.
+# It runs inside the LeWM container and verifies GPU access, PyTorch, and
+# the superpod.env setup from a GPU compute node.
+#
+# Usage:
+#   bash scripts/superpod/hello_superpod_gpu.sh
+
+set -euo pipefail
+
+SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+# shellcheck source=scripts/superpod/_common.sh
+source "${SUBMIT_DIR}/scripts/superpod/_common.sh"
+
+# If not already inside a Slurm job, generate a batch script and submit it.
+if [[ -z "${SLURM_JOB_ID:-}" ]]; then
+    cd "$PROJECT_DIR"
+    mkdir -p outputs
+
+    SBATCH_SCRIPT=$(mktemp)
+    cat > "$SBATCH_SCRIPT" <<EOF
+#!/bin/bash
 #SBATCH --job-name=hello-superpod-gpu
 #SBATCH --output=outputs/hello-gpu-%j.out
 #SBATCH --error=outputs/hello-gpu-%j.err
@@ -7,20 +28,17 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --gpus-per-node=1
-#SBATCH --account={{ACCOUNT}}
-#SBATCH --partition={{PARTITION_GPU}}
+#SBATCH --account=${SUPERPOD_ACCOUNT}
+#SBATCH --partition=${SUPERPOD_PARTITION_GPU}
 #SBATCH --time=00:05:00
+exec ${BASH_SOURCE[0]} "\$@"
+EOF
+    sbatch "$SBATCH_SCRIPT" "$@"
+    rm -f "$SBATCH_SCRIPT"
+    exit 0
+fi
 
-# GPU hello-world job for SuperPOD.
-# It runs inside the LeWM container and verifies GPU access, PyTorch, and
-# the superpod.env setup from a GPU compute node.
-
-set -euo pipefail
-
-SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-# shellcheck source=scripts/superpod/_common.sh
-source "${SUBMIT_DIR}/scripts/superpod/_common.sh"
-
+# Job body starts here.
 echo "========================================"
 echo "Hello from SuperPOD GPU node!"
 echo "========================================"

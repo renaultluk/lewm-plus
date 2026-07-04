@@ -1,23 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=lewm-eval
-#SBATCH --output=outputs/eval-%j.out
-#SBATCH --error=outputs/eval-%j.err
-#SBATCH --open-mode=truncate
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=28
-#SBATCH --gpus-per-node=1
-#SBATCH --account={{ACCOUNT}}
-#SBATCH --partition={{PARTITION_GPU}}
-#SBATCH --time=06:00:00
-
 # LeWorldModel evaluation batch script for HKUST SuperPOD.
 #
 # Usage:
-#   sbatch scripts/superpod/evaluate_lewm.sh \
+#   bash scripts/superpod/evaluate_lewm.sh \
 #       --config-name=pusht.yaml policy=pusht/lewm eval.num_eval=50
 #
-# All command-line arguments are forwarded to python eval.py.
+# This script reads scripts/superpod/superpod.env and self-submits to Slurm.
+# No separate configure step is required after superpod.env exists.
 
 set -euo pipefail
 
@@ -25,14 +14,39 @@ SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 # shellcheck source=scripts/superpod/_common.sh
 source "${SUBMIT_DIR}/scripts/superpod/_common.sh"
 
+# If not already inside a Slurm job, generate a batch script and submit it.
+if [[ -z "${SLURM_JOB_ID:-}" ]]; then
+    cd "$PROJECT_DIR"
+    mkdir -p outputs
+
+    SBATCH_SCRIPT=$(mktemp)
+    cat > "$SBATCH_SCRIPT" <<EOF
+#!/bin/bash
+#SBATCH --job-name=lewm-eval
+#SBATCH --output=outputs/eval-%j.out
+#SBATCH --error=outputs/eval-%j.err
+#SBATCH --open-mode=truncate
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=${CPUS_PER_TASK}
+#SBATCH --gpus-per-node=1
+#SBATCH --account=${SUPERPOD_ACCOUNT}
+#SBATCH --partition=${SUPERPOD_PARTITION_GPU}
+#SBATCH --time=06:00:00
+exec ${BASH_SOURCE[0]} "\$@"
+EOF
+    sbatch "$SBATCH_SCRIPT" "$@"
+    rm -f "$SBATCH_SCRIPT"
+    exit 0
+fi
+
+# Job body starts here.
 cd "$PROJECT_DIR"
 mkdir -p outputs
 
 # Combined list of extra mounts. Add /scratch/<GROUP> if you keep raw data there.
 MOUNTS="/project:/project,/home:/home"
 
-# Forward all remaining arguments to eval.py. Use $@ directly instead of
-# wrapping in bash -c so that Hydra overrides are preserved.
 srun --container-image "$CONTAINER_PATH" \
      --container-mounts "$MOUNTS" \
      --container-writable \

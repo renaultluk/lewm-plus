@@ -10,21 +10,21 @@
 
 set -euo pipefail
 
-# Allow callers to override the config directory (useful for tests).
-# If SUBMIT_DIR is unset, fall back to the repo root derived from this file's location.
+# If SUBMIT_DIR is unset, fall back to the repo root derived from this file.
 if [[ -z "${SUBMIT_DIR:-}" ]]; then
     SUBMIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 fi
+
+# Allow callers to override the config directory (useful for tests).
 SUPERPOD_CONFIG_DIR="${SUPERPOD_CONFIG_DIR:-${SUBMIT_DIR}/scripts/superpod}"
 ENV_FILE="${SUPERPOD_CONFIG_DIR}/superpod.env"
-
 
 if [[ -f "$ENV_FILE" ]]; then
     # shellcheck source=/dev/null
     source "$ENV_FILE"
 else
     echo "ERROR: SuperPOD config not found at $ENV_FILE" >&2
-    echo "Copy scripts/superpod/superpod.env.example to superpod.env and fill it in." >&2
+    echo "Run: bash scripts/superpod/configure_superpod.sh" >&2
     exit 1
 fi
 

@@ -1,18 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=hello-superpod
-#SBATCH --output=outputs/hello-%j.out
-#SBATCH --error=outputs/hello-%j.err
-#SBATCH --open-mode=truncate
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=2
-#SBATCH --account={{ACCOUNT}}
-#SBATCH --partition={{PARTITION_CPU}}
-#SBATCH --time=00:05:00
-
 # Hello-world job for SuperPOD.
 # It prints node info, Slurm environment variables, Python version, and
 # verifies that the STABLEWM_HOME directory is writable from the job.
+#
+# Usage:
+#   bash scripts/superpod/hello_superpod.sh
 
 set -euo pipefail
 
@@ -20,6 +12,32 @@ SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 # shellcheck source=scripts/superpod/_common.sh
 source "${SUBMIT_DIR}/scripts/superpod/_common.sh"
 
+# If not already inside a Slurm job, generate a batch script and submit it.
+if [[ -z "${SLURM_JOB_ID:-}" ]]; then
+    cd "$PROJECT_DIR"
+    mkdir -p outputs
+
+    SBATCH_SCRIPT=$(mktemp)
+    cat > "$SBATCH_SCRIPT" <<EOF
+#!/bin/bash
+#SBATCH --job-name=hello-superpod
+#SBATCH --output=outputs/hello-%j.out
+#SBATCH --error=outputs/hello-%j.err
+#SBATCH --open-mode=truncate
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=2
+#SBATCH --account=${SUPERPOD_ACCOUNT}
+#SBATCH --partition=${SUPERPOD_PARTITION_CPU}
+#SBATCH --time=00:05:00
+exec ${BASH_SOURCE[0]} "\$@"
+EOF
+    sbatch "$SBATCH_SCRIPT" "$@"
+    rm -f "$SBATCH_SCRIPT"
+    exit 0
+fi
+
+# Job body starts here.
 echo "========================================"
 echo "Hello from SuperPOD!"
 echo "========================================"

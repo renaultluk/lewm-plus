@@ -1,6 +1,7 @@
 #!/bin/bash
-# Generate superpod.env by interactively asking for account/group/user,
-# then substitute Slurm placeholders in all SuperPOD batch scripts.
+# Generate scripts/superpod/superpod.env by interactively asking for
+# account/partition/group/user. This is a one-time setup step; once the env
+# file exists, all other scripts read from it directly at submit/runtime.
 #
 # Usage:
 #   bash scripts/superpod/configure_superpod.sh
@@ -9,6 +10,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="${SCRIPT_DIR}/superpod.env"
+
+if [[ -f "$ENV_FILE" ]]; then
+    echo "Found existing ${ENV_FILE}. Overwrite? [y/N]"
+    read -r answer
+    if [[ "$answer" != "y" && "$answer" != "Y" ]]; then
+        echo "Aborting. Existing config kept."
+        exit 0
+    fi
+fi
 
 echo "=== SuperPOD configuration ==="
 echo "Find your account/partition with: sacctmgr show user \$USER withassoc"
@@ -46,27 +56,7 @@ EOF
 
 echo ""
 echo "Wrote ${ENV_FILE}"
-
-# Substitute Slurm placeholders in batch scripts. Non-batch scripts
-# (interactive_gpu.sh, sync_to_superpod.sh) read superpod.env at runtime.
-for f in "$SCRIPT_DIR"/*.sh; do
-    case "$(basename "$f")" in
-        _common.sh|configure_superpod.sh|interactive_gpu.sh|sync_to_superpod.sh)
-            continue
-            ;;
-    esac
-
-    # Only touch scripts that still have Slurm placeholders.
-    grep -q '{{ACCOUNT}}\|{{PARTITION_GPU}}\|{{PARTITION_CPU}}' "$f" || continue
-
-    sed -i \
-        -e "s/{{ACCOUNT}}/${ACCOUNT}/g" \
-        -e "s/{{PARTITION_GPU}}/${PARTITION_GPU}/g" \
-        -e "s/{{PARTITION_CPU}}/${PARTITION_CPU}/g" \
-        "$f"
-    echo "Configured Slurm placeholders in: $f"
-done
-
-echo ""
-echo "Done. Review superpod.env, then submit jobs with:"
-echo "  sbatch scripts/superpod/train_lewm.sh data=pusht_h5 ..."
+echo "You can now submit jobs directly, e.g.:"
+echo "  bash scripts/superpod/hello_superpod.sh"
+echo "  bash scripts/superpod/hello_superpod_gpu.sh"
+echo "  bash scripts/superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100"

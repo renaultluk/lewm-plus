@@ -1,21 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=lewm-download
-#SBATCH --output=outputs/download-%j.out
-#SBATCH --error=outputs/download-%j.err
-#SBATCH --open-mode=truncate
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
-#SBATCH --account={{ACCOUNT}}
-#SBATCH --partition={{PARTITION_CPU}}
-#SBATCH --time=06:00:00
-
 # Download official LeWM datasets from HuggingFace to scratch storage.
 #
 # Usage:
-#   sbatch scripts/superpod/download_datasets.sh
+#   bash scripts/superpod/download_datasets.sh
 #
 # Edit the REPOS list below to download only what you need.
+# This script reads scripts/superpod/superpod.env and self-submits to Slurm.
 
 set -euo pipefail
 
@@ -23,6 +13,32 @@ SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 # shellcheck source=scripts/superpod/_common.sh
 source "${SUBMIT_DIR}/scripts/superpod/_common.sh"
 
+# If not already inside a Slurm job, generate a batch script and submit it.
+if [[ -z "${SLURM_JOB_ID:-}" ]]; then
+    cd "$PROJECT_DIR"
+    mkdir -p outputs
+
+    SBATCH_SCRIPT=$(mktemp)
+    cat > "$SBATCH_SCRIPT" <<EOF
+#!/bin/bash
+#SBATCH --job-name=lewm-download
+#SBATCH --output=outputs/download-%j.out
+#SBATCH --error=outputs/download-%j.err
+#SBATCH --open-mode=truncate
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=${CPUS_PER_TASK_CPU}
+#SBATCH --account=${SUPERPOD_ACCOUNT}
+#SBATCH --partition=${SUPERPOD_PARTITION_CPU}
+#SBATCH --time=06:00:00
+exec ${BASH_SOURCE[0]} "\$@"
+EOF
+    sbatch "$SBATCH_SCRIPT" "$@"
+    rm -f "$SBATCH_SCRIPT"
+    exit 0
+fi
+
+# Job body starts here.
 # After the job finishes, move extracted .h5 files from $SCRATCH_DATA
 # to $STABLEWM_HOME/datasets/ for long-term storage.
 
