@@ -54,16 +54,12 @@ MOUNTS="/project:/project,/home:/home"
 # On some compute nodes srun is a wrapper that requires the slurm module.
 module load slurm 2>/dev/null || true
 
-# Run python through bash so we can set the container venv PATH/VIRTUAL_ENV
-# and STABLEWM_HOME explicitly. Do not use --export=ALL because the container
-# image may ship its own STABLEWM_HOME default that shadows the SuperPOD path.
+# Export only the variables we need into the container step. We pass them
+# explicitly via srun --export so the container image's own defaults are
+# overridden (notably the old STABLEWM_HOME=/workspace/.stable-wm).
 srun --container-image "$CONTAINER_PATH" \
      --container-mounts "$MOUNTS" \
      --container-writable \
      --container-workdir "$PROJECT_DIR" \
-     bash -c '
-        export STABLEWM_HOME="'"${STABLEWM_HOME}"'"
-        export PATH=/workspace/.venv/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-        export VIRTUAL_ENV=/workspace/.venv
-        exec /workspace/.venv/bin/python eval.py "$@"
-     ' bash "$@"
+     --export="STABLEWM_HOME=${STABLEWM_HOME},PATH=/workspace/.venv/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin,VIRTUAL_ENV=/workspace/.venv" \
+     /workspace/.venv/bin/python eval.py "$@"
