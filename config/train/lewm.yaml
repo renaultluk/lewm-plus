@@ -2,6 +2,7 @@ defaults:
   - _self_
   - launcher: local
   - data: pusht
+  - experiment: null
   - model: lewm
 
 output_model_name: lewm

@@ -1,0 +1,6 @@
+# @package _global_
+
+policy: pusht_h5_replicate/pusht_h5_replicate
+
+eval:
+  num_eval: 50

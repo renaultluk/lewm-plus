@@ -1,0 +1,12 @@
+# @package _global_
+
+defaults:
+  - override /data: pusht_h5
+
+trainer:
+  max_epochs: 100
+
+output_model_name: pusht_h5_replicate
+
+wandb:
+  enabled: false

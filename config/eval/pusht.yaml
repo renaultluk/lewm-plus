@@ -1,6 +1,7 @@
 defaults:
   - launcher: local
   - solver: cem
+  - experiment: null
   - _self_
 
 world:
