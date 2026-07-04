@@ -17,8 +17,7 @@
 #   sbatch scripts/superpod/train_lewm.sh \
 #       data=pusht_h5 trainer.max_epochs=100 output_model_name=pusht_replicate wandb.enabled=false
 #
-# The script sources superpod.env, changes to $PROJECT_DIR, activates the
-# container, and passes all command-line arguments to python train.py.
+# All command-line arguments are forwarded to python train.py.
 
 set -euo pipefail
 
@@ -32,15 +31,14 @@ mkdir -p outputs
 # Combined list of extra mounts. Add /scratch/<GROUP> if you keep raw data there.
 MOUNTS="/project:/project,/home:/home"
 
+# Forward all remaining arguments to train.py. Use $@ directly instead of
+# wrapping in bash -c so that Hydra overrides are preserved.
 srun --container-image "$CONTAINER_PATH" \
      --container-mounts "$MOUNTS" \
      --container-writable \
      --container-workdir "$PROJECT_DIR" \
-     bash -c "
-        export STABLEWM_HOME=${STABLEWM_HOME}
-        export WANDB_DISABLED=${WANDB_DISABLED:-false}
-        # The container already ships its venv at /workspace/.venv.
-        export PATH=/workspace/.venv/bin:/root/.local/bin:\$PATH
-        export VIRTUAL_ENV=/workspace/.venv
-        python train.py \$@
-     "
+     --environment="STABLEWM_HOME=${STABLEWM_HOME}" \
+     --environment="WANDB_DISABLED=${WANDB_DISABLED:-false}" \
+     --environment="PATH=/workspace/.venv/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+     --environment="VIRTUAL_ENV=/workspace/.venv" \
+     /workspace/.venv/bin/python train.py "$@"

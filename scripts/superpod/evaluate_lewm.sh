@@ -17,7 +17,7 @@
 #   sbatch scripts/superpod/evaluate_lewm.sh \
 #       --config-name=pusht.yaml policy=pusht/lewm eval.num_eval=50
 #
-# All arguments are forwarded to python eval.py.
+# All command-line arguments are forwarded to python eval.py.
 
 set -euo pipefail
 
@@ -31,14 +31,13 @@ mkdir -p outputs
 # Combined list of extra mounts. Add /scratch/<GROUP> if you keep raw data there.
 MOUNTS="/project:/project,/home:/home"
 
+# Forward all remaining arguments to eval.py. Use $@ directly instead of
+# wrapping in bash -c so that Hydra overrides are preserved.
 srun --container-image "$CONTAINER_PATH" \
      --container-mounts "$MOUNTS" \
      --container-writable \
      --container-workdir "$PROJECT_DIR" \
-     bash -c "
-        export STABLEWM_HOME=${STABLEWM_HOME}
-        # The container already ships its venv at /workspace/.venv.
-        export PATH=/workspace/.venv/bin:/root/.local/bin:\$PATH
-        export VIRTUAL_ENV=/workspace/.venv
-        python eval.py \$@
-     "
+     --environment="STABLEWM_HOME=${STABLEWM_HOME}" \
+     --environment="PATH=/workspace/.venv/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+     --environment="VIRTUAL_ENV=/workspace/.venv" \
+     /workspace/.venv/bin/python eval.py "$@"
