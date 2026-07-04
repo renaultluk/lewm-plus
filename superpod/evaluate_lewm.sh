@@ -19,6 +19,10 @@ if [[ -z "${SLURM_JOB_ID:-}" ]]; then
     cd "$PROJECT_DIR"
     mkdir -p outputs
 
+    # SuperPOD login nodes require the slurm module to be loaded before
+    # sbatch/srun can be used.
+    module load slurm 2>/dev/null || true
+
     SBATCH_SCRIPT=$(mktemp)
     cat > "$SBATCH_SCRIPT" <<EOF
 #!/bin/bash
