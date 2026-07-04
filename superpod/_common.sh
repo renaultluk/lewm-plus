@@ -12,7 +12,7 @@ set -euo pipefail
 
 # If SUBMIT_DIR is unset, fall back to the repo root derived from this file.
 if [[ -z "${SUBMIT_DIR:-}" ]]; then
-    SUBMIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+    SUBMIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fi
 
 # Allow callers to override the config directory (useful for tests).

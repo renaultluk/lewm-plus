@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 # shellcheck source=superpod/_common.sh
 source "${SUBMIT_DIR}/superpod/_common.sh"
 
