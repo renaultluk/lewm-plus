@@ -51,7 +51,9 @@ srun --container-image "$CONTAINER_PATH" \
      --container-mounts "$MOUNTS" \
      --container-writable \
      --container-workdir "$PROJECT_DIR" \
-     --environment="STABLEWM_HOME=${STABLEWM_HOME}" \
-     --environment="PATH=/workspace/.venv/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
-     --environment="VIRTUAL_ENV=/workspace/.venv" \
-     /workspace/.venv/bin/python eval.py "$@"
+     bash -c '
+        export STABLEWM_HOME="'"${STABLEWM_HOME}"'"
+        export PATH=/workspace/.venv/bin:/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+        export VIRTUAL_ENV=/workspace/.venv
+        exec /workspace/.venv/bin/python eval.py "$@"
+     ' bash "$@"
