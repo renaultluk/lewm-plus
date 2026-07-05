@@ -169,6 +169,7 @@ Variables you can tune in `superpod.env`:
 | `CONTAINER_PATH`          | Path to the Enroot `.sqsh` container            | `~/containers/...` |
 | `CPUS_PER_TASK`           | CPU cores for GPU jobs                          | `28`            |
 | `CPUS_PER_TASK_CPU`       | CPU cores for CPU jobs                          | `8`             |
+| `TRAIN_TIME`              | Walltime for `train_lewm.sh` jobs              | `71:00:00`      |
 | `STABLEWM_HOME`           | Dataset/checkpoint root                         | `$PROJECT_DIR/.stable-wm` |
 | `SCRATCH_DATA`            | Scratch directory for raw downloads             | `/scratch/.../datasets`   |
 
@@ -180,6 +181,9 @@ read it at submit/runtime and generate the correct Slurm directives automaticall
 ```bash
 # Submit a LeWM training job
 bash superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100
+
+# Resume-friendly two-stage pattern for 72h limits
+bash superpod/resume_train.sh pusht_h5_replicate_run 70 100
 
 # Check queue
 squeue --me

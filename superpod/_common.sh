@@ -38,5 +38,6 @@ fi
 : "${CONTAINER_PATH:=$HOME/containers/lewm.sqsh}"
 : "${CPUS_PER_TASK:=28}"
 : "${CPUS_PER_TASK_CPU:=8}"
+: "${TRAIN_TIME:=12:00:00}"
 : "${STABLEWM_HOME:=${PROJECT_DIR}/.stable-wm}"
 : "${SCRATCH_DATA:=/scratch/${SUPERPOD_GROUP}/datasets}"

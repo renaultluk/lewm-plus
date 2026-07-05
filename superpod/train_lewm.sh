@@ -35,7 +35,7 @@ if [[ -z "${SLURM_JOB_ID:-}" ]]; then
 #SBATCH --gpus-per-node=1
 #SBATCH --account=${SUPERPOD_ACCOUNT}
 #SBATCH --partition=${SUPERPOD_PARTITION_GPU}
-#SBATCH --time=12:00:00
+#SBATCH --time=${TRAIN_TIME}
 exec ${BASH_SOURCE[0]} "\$@"
 EOF
     sbatch "$SBATCH_SCRIPT" "$@"
@@ -55,13 +55,16 @@ for arg in "$@"; do
     if [[ "$arg" == "data=pusht_h5" ]]; then
         USE_PUSHT_H5=true
     fi
+    if [[ "$arg" == "experiment=pusht_h5_replicate" ]] || [[ "$arg" == "+experiment=pusht_h5_replicate" ]]; then
+        USE_PUSHT_H5=true
+    fi
     if [[ "$arg" == data.dataset.name=* ]]; then
         HAS_DATASET_NAME_OVERRIDE=true
     fi
 done
 
 DATASET_NAME_OVERRIDE=""
-if [[ " $* " == *" data=pusht_h5 "* ]]; then
+if [[ "$USE_PUSHT_H5" == true ]]; then
     EXPECTED_H5="${STABLEWM_HOME}/datasets/pusht_expert_train.h5"
     NESTED_H5="${STABLEWM_HOME}/datasets/pusht/pusht_expert_train.h5"
     NESTED_ZST="${STABLEWM_HOME}/datasets/pusht/pusht_expert_train.h5.zst"

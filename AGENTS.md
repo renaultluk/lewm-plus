@@ -46,6 +46,7 @@ bash superpod/configure_superpod.sh
 bash superpod/sync_to_superpod.sh
 bash superpod/hello_superpod.sh
 bash superpod/hello_superpod_gpu.sh
+bash superpod/resume_train.sh pusht_h5_replicate_run 70 100
 bash superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100 output_model_name=pusht_h5_replicate wandb.enabled=false
 bash superpod/evaluate_lewm.sh --config-name=pusht.yaml policy=pusht_h5_replicate/pusht_h5_replicate eval.num_eval=50
 ```
@@ -81,9 +82,14 @@ bash superpod/evaluate_lewm.sh --config-name=pusht.yaml policy=pusht_h5_replicat
 - Repo: `renaultluk/lewm-plus` with SuperPOD helpers under repo-root `superpod/`.
 - Container expectation: `superpod/Dockerfile` sets `STABLEWM_HOME=/workspace/.stable-wm` and uses `/workspace/.venv/bin/python`.
 - Mount strategy: host `${STABLEWM_HOME}` is mounted to container `/workspace/.stable-wm` (no `--container-env` requirement).
+- Walltime control: set `TRAIN_TIME` in `superpod/superpod.env` (e.g. `71:00:00` under a 72h cap).
 - Preferred training command:
   ```bash
   bash superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100 output_model_name=pusht_h5_replicate wandb.enabled=false
+  ```
+- Preferred resumed training pattern for long runs:
+  ```bash
+  bash superpod/resume_train.sh pusht_h5_replicate_run 70 100
   ```
 - Preferred eval command:
   ```bash

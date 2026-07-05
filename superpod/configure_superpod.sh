@@ -33,6 +33,8 @@ read -rp "CPU cores per GPU job (default: 28): " CPUS_PER_TASK
 CPUS_PER_TASK=${CPUS_PER_TASK:-28}
 read -rp "CPU cores per CPU job (default: 8): " CPUS_PER_TASK_CPU
 CPUS_PER_TASK_CPU=${CPUS_PER_TASK_CPU:-8}
+read -rp "Training walltime HH:MM:SS (default: 12:00:00): " TRAIN_TIME
+TRAIN_TIME=${TRAIN_TIME:-12:00:00}
 
 cat > "$ENV_FILE" <<EOF
 # SuperPOD environment configuration.
@@ -49,6 +51,7 @@ CONTAINER_PATH=\$HOME/containers/lewm.sqsh
 
 CPUS_PER_TASK=${CPUS_PER_TASK}
 CPUS_PER_TASK_CPU=${CPUS_PER_TASK_CPU}
+TRAIN_TIME=${TRAIN_TIME}
 
 STABLEWM_HOME=\${PROJECT_DIR}/.stable-wm
 SCRATCH_DATA=/scratch/\${SUPERPOD_GROUP}/datasets
