@@ -1,0 +1,59 @@
+<mujoco model="reacher_task_agnostic">
+  <compiler angle="radian" inertiafromgeom="true"/>
+  <default>
+    <joint armature="1" damping="1" limited="true"/>
+    <geom friction="1 0.1 0.1" rgba="0.7 0.7 0 1"/>
+  </default>
+
+  <option gravity="0 0 -9.81" integrator="RK4" timestep="0.01"/>
+
+  <worldbody>
+    <geom name="ground" type="plane" pos="0 0 0" size="1 1 10" rgba="0.95 0.95 0.95 1" conaffinity="0" contype="0"/>
+    <geom name="sideS" type="capsule" fromto="-.3 -.3 .01 .3 -.3 .01" size=".02" rgba="0.9 0.4 0.6 1" conaffinity="0" contype="0"/>
+    <geom name="sideE" type="capsule" fromto=" .3 -.3 .01 .3  .3 .01" size=".02" rgba="0.9 0.4 0.6 1" conaffinity="0" contype="0"/>
+    <geom name="sideN" type="capsule" fromto="-.3  .3 .01 .3  .3 .01" size=".02" rgba="0.9 0.4 0.6 1" conaffinity="0" contype="0"/>
+    <geom name="sideW" type="capsule" fromto="-.3 -.3 .01 -.3 .3 .01" size=".02" rgba="0.9 0.4 0.6 1" conaffinity="0" contype="0"/>
+
+    <geom name="root" type="cylinder" fromto="0 0 0 0 0 0.02" size=".011" rgba="0.9 0.4 0.6 1" conaffinity="0" contype="0"/>
+    <body name="body0" pos="0 0 .01">
+      <joint name="joint0" type="hinge" axis="0 0 1" limited="false"/>
+      <geom name="link0" type="capsule" fromto="0 0 0 0.1 0 0" size=".01" rgba="0.0 0.4 0.6 1" conaffinity="0" contype="0"/>
+      <body name="body1" pos="0.1 0 0">
+        <joint name="joint1" type="hinge" axis="0 0 1" range="-3.0 3.0"/>
+        <geom name="link1" type="capsule" fromto="0 0 0 0.1 0 0" size=".01" rgba="0.0 0.4 0.6 1" conaffinity="0" contype="0"/>
+        <body name="fingertip" pos="0.11 0 0">
+          <geom name="fingertip" type="sphere" size=".012" rgba="0.0 0.85 0.6 1" contype="1" conaffinity="1"/>
+        </body>
+      </body>
+    </body>
+
+    <body name="target" pos=".1 -.1 .01">
+      <joint name="target_x" type="slide" axis="1 0 0" range="-.27 .27" armature="0" damping="0" stiffness="0"/>
+      <joint name="target_y" type="slide" axis="0 1 0" range="-.27 .27" armature="0" damping="0" stiffness="0"/>
+      <geom name="target" type="sphere" size=".010" rgba="0.95 0.2 0.2 1" contype="0" conaffinity="0"/>
+    </body>
+
+    <body name="blue_goal" pos="-.15 .15 .01">
+      <joint name="blue_goal_x" type="slide" axis="1 0 0" range="-.27 .27" armature="0" damping="0" stiffness="0"/>
+      <joint name="blue_goal_y" type="slide" axis="0 1 0" range="-.27 .27" armature="0" damping="0" stiffness="0"/>
+      <geom name="blue_goal_geom" type="sphere" size=".010" rgba="0.45 0.65 1.0 1" contype="0" conaffinity="0"/>
+    </body>
+
+    <body name="blue_object" pos="-.06 .06 .012">
+      <joint name="blue_obj_x" type="slide" axis="1 0 0" range="-.26 .26" armature="0" damping="0.35" stiffness="0"/>
+      <joint name="blue_obj_y" type="slide" axis="0 1 0" range="-.26 .26" armature="0" damping="0.35" stiffness="0"/>
+      <geom name="blue_object_geom" type="sphere" size=".013" rgba="0.15 0.35 0.95 1" contype="1" conaffinity="1" friction="0.95 0.01 0.01"/>
+    </body>
+
+    <body name="purple_ball" pos=".06 -.06 .012">
+      <joint name="purple_x" type="slide" axis="1 0 0" range="-.26 .26" armature="0" damping="0.35" stiffness="0"/>
+      <joint name="purple_y" type="slide" axis="0 1 0" range="-.26 .26" armature="0" damping="0.35" stiffness="0"/>
+      <geom name="purple_ball_geom" type="sphere" size=".013" rgba="0.7 0.3 0.9 1" contype="1" conaffinity="1" friction="0.95 0.01 0.01"/>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <motor joint="joint0" ctrllimited="true" ctrlrange="-1.0 1.0" gear="200.0"/>
+    <motor joint="joint1" ctrllimited="true" ctrlrange="-1.0 1.0" gear="200.0"/>
+  </actuator>
+</mujoco>

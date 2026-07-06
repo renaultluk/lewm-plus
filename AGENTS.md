@@ -41,6 +41,24 @@ python train.py data=pusht_h5 trainer.max_epochs=1 output_model_name=dev_smoke w
 python eval.py --config-name=pusht.yaml policy=random eval.num_eval=2
 ```
 
+### Reacher task-agnostic dataset + export
+```bash
+# Generate a 224x224 smoke dataset from the custom XML reacher scene
+.venv/bin/python scripts/generate_mujoco_dataset.py \
+  --env ReacherTaskAgnostic-v0 \
+  --policy reacher_multitask \
+  --episodes 3 \
+  --max_steps 60 \
+  --image_size 224 \
+  --output .stable-wm/datasets/reacher_task_agnostic_xml_smoke_224.lance
+
+# Export episode 0 to MP4 for quick visual verification
+.venv/bin/python scripts/view_lance_episode.py \
+  --dataset .stable-wm/datasets/reacher_task_agnostic_xml_smoke_224.lance \
+  --episode 0 \
+  --output .stable-wm/datasets/reacher_task_agnostic_xml_smoke_224_ep0.mp4
+```
+
 ### SuperPOD workflow
 ```bash
 bash superpod/configure_superpod.sh

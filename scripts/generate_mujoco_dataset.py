@@ -8,8 +8,8 @@ python scripts/generate_mujoco_dataset.py --env HalfCheetah-v5 --episodes 50 --o
 # Hopper with a heuristic/random mixed policy
 python scripts/generate_mujoco_dataset.py --env Hopper-v5 --episodes 100 --output ~/.stable-wm/hopper_random.lance
 
-# Reacher task-agnostic videos (one task per episode)
-python scripts/generate_mujoco_dataset.py --env Reacher-v5 --policy reacher_multitask --episodes 200 --output ~/.stable-wm/reacher_multitask.lance
+# Reacher task-agnostic videos using custom XML scene with objects
+python scripts/generate_mujoco_dataset.py --env ReacherTaskAgnostic-v0 --policy reacher_multitask --episodes 200 --output ~/.stable-wm/reacher_multitask.lance
 """
 
 import argparse
@@ -18,8 +18,7 @@ from pathlib import Path
 import gymnasium as gym
 import numpy as np
 import stable_worldmodel as swm
-import torch
-from PIL import Image, ImageDraw
+from PIL import Image
 
 
 REACHER_TASKS = [
@@ -29,6 +28,9 @@ REACHER_TASKS = [
     "fold_in_on_itself",
     "trace_circle",
 ]
+
+CUSTOM_REACHER_ENV_ID = "ReacherTaskAgnostic-v0"
+CUSTOM_REACHER_XML = Path(__file__).resolve().parent.parent / "assets" / "reacher_task_agnostic.xml"
 
 
 def render_env(env, render_mode="rgb_array", camera_id=None):
@@ -59,7 +61,7 @@ def _sample_workspace_point(rng, radius=0.18):
     return np.array([r * np.cos(angle), r * np.sin(angle)], dtype=np.float32)
 
 
-def _sample_edge_point(rng, radius=0.21):
+def _sample_edge_point(rng, radius=0.245):
     angle = rng.uniform(0.0, 2.0 * np.pi)
     return np.array([radius * np.cos(angle), radius * np.sin(angle)], dtype=np.float32)
 
@@ -85,144 +87,103 @@ def _ee_controller(q, goal_xy, link_length=0.1, gain=18.0):
     return np.clip(action, -1.0, 1.0).astype(np.float32)
 
 
-def _set_reacher_target(env, target_xy):
+def _init_reacher_task(env, task_name, rng):
+    target = _sample_workspace_point(rng, radius=0.18)
+    blue_goal = _sample_workspace_point(rng, radius=0.20)
+    blue_obj = _sample_workspace_point(rng, radius=0.14)
+    purple_obj = _sample_workspace_point(rng, radius=0.14)
+
     qpos = env.unwrapped.data.qpos.copy()
     qvel = env.unwrapped.data.qvel.copy()
-    if qpos.shape[0] >= 4:
-        qpos[-2:] = target_xy
-        env.unwrapped.set_state(qpos, qvel)
+    _set_body_xy_from_joint(qpos, env, "target_x", "target_y", target)
+    _set_body_xy_from_joint(qpos, env, "blue_goal_x", "blue_goal_y", blue_goal)
+    _set_body_xy_from_joint(qpos, env, "blue_obj_x", "blue_obj_y", blue_obj)
+    _set_body_xy_from_joint(qpos, env, "purple_x", "purple_y", purple_obj)
+    env.unwrapped.set_state(qpos, qvel)
 
-
-def _world_to_px(xy, size):
-    scale = size / 0.52
-    cx = (size * 0.5) + (xy[0] * scale)
-    cy = (size * 0.5) - (xy[1] * scale)
-    return int(np.clip(cx, 0, size - 1)), int(np.clip(cy, 0, size - 1))
-
-
-def _draw_disk(draw, center_px, radius_px, color):
-    x, y = center_px
-    draw.ellipse((x - radius_px, y - radius_px, x + radius_px, y + radius_px), fill=color)
-
-
-def _annotate_reacher_task(frame, image_size, task_state):
-    img = Image.fromarray(frame)
-    draw = ImageDraw.Draw(img)
-
-    if "target" in task_state:
-        color = task_state.get("target_color", (255, 32, 32))
-        _draw_disk(draw, _world_to_px(task_state["target"], image_size), 6, color)
-
-    if "object" in task_state:
-        color = task_state.get("object_color", (35, 120, 255))
-        _draw_disk(draw, _world_to_px(task_state["object"], image_size), 8, color)
-
-    if "edge_goal" in task_state:
-        _draw_disk(draw, _world_to_px(task_state["edge_goal"], image_size), 6, (190, 70, 210))
-
-    return np.array(img)
-
-
-def _init_reacher_task(env, task_name, rng):
     if task_name == "reach_red_spot":
-        target = _sample_workspace_point(rng)
-        _set_reacher_target(env, target)
-        return {"name": task_name, "target": target, "target_color": (240, 40, 40)}
+        return {"name": task_name}
 
     if task_name == "push_blue_object_to_blue_spot":
-        obj = _sample_workspace_point(rng)
-        target = _sample_workspace_point(rng)
-        _set_reacher_target(env, np.array([0.25, 0.25], dtype=np.float32))
-        return {
-            "name": task_name,
-            "object": obj,
-            "target": target,
-            "object_color": (35, 125, 255),
-            "target_color": (110, 175, 255),
-        }
+        return {"name": task_name}
 
     if task_name == "push_purple_ball_to_edge":
-        obj = _sample_workspace_point(rng, radius=0.12)
-        edge_goal = _sample_edge_point(rng)
-        _set_reacher_target(env, np.array([0.25, 0.25], dtype=np.float32))
         return {
             "name": task_name,
-            "object": obj,
-            "edge_goal": edge_goal,
-            "object_color": (170, 70, 210),
-            "target_color": (220, 145, 235),
+            "edge_goal": _sample_edge_point(rng),
         }
 
     if task_name == "fold_in_on_itself":
-        _set_reacher_target(env, np.array([0.25, 0.25], dtype=np.float32))
-        return {
-            "name": task_name,
-            "joint_goal": np.array([1.6, -2.5], dtype=np.float32),
-        }
+        q_goal = np.array([1.6, -2.5], dtype=np.float32)
+        if rng.random() < 0.5:
+            q_goal = -q_goal
+        return {"name": task_name, "joint_goal": q_goal}
 
     if task_name == "trace_circle":
-        center = _sample_workspace_point(rng, radius=0.06)
-        _set_reacher_target(env, center)
         return {
             "name": task_name,
-            "center": center,
-            "radius": float(rng.uniform(0.04, 0.09)),
-            "omega": float(rng.uniform(0.05, 0.11)),
+            "radius": float(rng.uniform(0.03, 0.09)),
+            "omega": float(rng.uniform(0.05, 0.14)),
+            "phase0": float(rng.uniform(0.0, 2.0 * np.pi)),
         }
 
     raise ValueError(f"Unknown reacher task: {task_name}")
 
 
-def _update_virtual_object(ee_xy, obj_xy, contact_radius=0.05):
-    diff = ee_xy - obj_xy
-    dist = float(np.linalg.norm(diff))
-    if dist < contact_radius:
-        obj_xy = obj_xy + 0.33 * diff
-    return np.clip(obj_xy, -0.24, 0.24)
+def _joint_controller(q, q_goal, gain=2.0):
+    action = gain * (q_goal - q)
+    return np.clip(action, -1.0, 1.0).astype(np.float32)
 
 
-def _reacher_task_action(env, task_state, step_idx):
-    q = env.unwrapped.data.qpos[:2].copy()
-    ee_xy = _fk_reacher(q)
+def _joint_qpos_index(env, joint_name):
+    return int(env.unwrapped.model.joint(joint_name).qposadr[0])
+
+
+def _set_body_xy_from_joint(qpos, env, joint_x, joint_y, xy):
+    qpos[_joint_qpos_index(env, joint_x)] = float(xy[0])
+    qpos[_joint_qpos_index(env, joint_y)] = float(xy[1])
+
+
+def _get_body_xy(env, body_name):
+    return np.asarray(env.unwrapped.data.body(body_name).xpos[:2], dtype=np.float32)
+
+
+def _reacher_task_action(env, task_state, rng, step_idx, prev_action):
+    q = np.asarray(env.unwrapped.data.qpos[:2], dtype=np.float32)
+    ee_xy = _get_body_xy(env, "fingertip")
+    target_xy = _get_body_xy(env, "target")
     name = task_state["name"]
 
     if name == "reach_red_spot":
-        return _ee_controller(q, task_state["target"]), ee_xy
+        return _ee_controller(q, target_xy)
 
     if name == "push_blue_object_to_blue_spot":
-        obj = task_state["object"]
-        target = task_state["target"]
-        push_dir = target - obj
-        norm = float(np.linalg.norm(push_dir))
-        push_hat = push_dir / (norm + 1e-6)
-        approach = obj - 0.035 * push_hat
-        contact = float(np.linalg.norm(ee_xy - obj)) < 0.05
-        goal = target if contact else approach
-        return _ee_controller(q, goal), ee_xy
+        obj_xy = _get_body_xy(env, "blue_object")
+        goal_xy = _get_body_xy(env, "blue_goal")
+        push_dir = goal_xy - obj_xy
+        push_hat = push_dir / (float(np.linalg.norm(push_dir)) + 1e-6)
+        approach = obj_xy - 0.04 * push_hat
+        contact = float(np.linalg.norm(ee_xy - obj_xy)) < 0.035
+        return _ee_controller(q, goal_xy if contact else approach, gain=12.0)
 
     if name == "push_purple_ball_to_edge":
-        obj = task_state["object"]
+        obj_xy = _get_body_xy(env, "purple_ball")
         edge_goal = task_state["edge_goal"]
-        push_dir = edge_goal - obj
-        norm = float(np.linalg.norm(push_dir))
-        push_hat = push_dir / (norm + 1e-6)
-        approach = obj - 0.035 * push_hat
-        contact = float(np.linalg.norm(ee_xy - obj)) < 0.05
-        goal = edge_goal if contact else approach
-        return _ee_controller(q, goal), ee_xy
+        push_dir = edge_goal - obj_xy
+        push_hat = push_dir / (float(np.linalg.norm(push_dir)) + 1e-6)
+        approach = obj_xy - 0.04 * push_hat
+        contact = float(np.linalg.norm(ee_xy - obj_xy)) < 0.035
+        return _ee_controller(q, edge_goal if contact else approach, gain=12.0)
 
     if name == "fold_in_on_itself":
-        q_goal = task_state["joint_goal"]
-        action = 2.2 * (q_goal - q)
-        return np.clip(action, -1.0, 1.0).astype(np.float32), ee_xy
+        return _joint_controller(q, task_state["joint_goal"])
 
     if name == "trace_circle":
-        center = task_state["center"]
-        radius = task_state["radius"]
-        omega = task_state["omega"]
-        phase = step_idx * omega
-        goal = center + radius * np.array([np.cos(phase), np.sin(phase)], dtype=np.float32)
-        return _ee_controller(q, goal), ee_xy
+        phase = task_state["phase0"] + task_state["omega"] * step_idx
+        orbit_goal = target_xy + task_state["radius"] * np.array(
+            [np.cos(phase), np.sin(phase)], dtype=np.float32
+        )
+        return _ee_controller(q, orbit_goal, gain=12.0)
 
     raise ValueError(f"Unknown reacher task: {name}")
 
@@ -236,22 +197,20 @@ def collect_reacher_multitask_episode(env, max_steps, image_size, seed, tasks):
 
     frames, actions, observations, rewards, dones = [], [], [], [], []
     steps = 0
+    prev_action = np.zeros(2, dtype=np.float32)
     terminated = truncated = False
     while not (terminated or truncated) and steps < max_steps:
-        action, ee_xy = _reacher_task_action(env, task_state, step_idx=steps)
+        action = _reacher_task_action(env, task_state, rng, step_idx=steps, prev_action=prev_action)
         next_obs, reward, terminated, truncated, info = env.step(action)
 
-        if "object" in task_state:
-            task_state["object"] = _update_virtual_object(ee_xy, task_state["object"])
-
         frame = resize(render_env(env), size=image_size)
-        frame = _annotate_reacher_task(frame, image_size=image_size, task_state=task_state)
         frames.append(frame)
         actions.append(np.asarray(action, dtype=np.float32))
         observations.append(np.asarray(obs, dtype=np.float32))
         rewards.append(np.float32(reward))
         dones.append(bool(terminated or truncated))
         obs = next_obs
+        prev_action = np.asarray(action, dtype=np.float32)
         steps += 1
 
     episode = {
@@ -265,12 +224,21 @@ def collect_reacher_multitask_episode(env, max_steps, image_size, seed, tasks):
     return episode, task_name
 
 
-def make_env(env_name, seed, image_size=224, camera_name=None):
+def make_env(env_name, seed, image_size=224, camera_name=None, max_episode_steps=None):
     """Create a renderable Gymnasium MuJoCo environment."""
-    env = gym.make(env_name, render_mode="rgb_array")
-    if hasattr(env, "unwrapped"):
-        env.unwrapped.model.vis.global_.offwidth = image_size
-        env.unwrapped.model.vis.global_.offheight = image_size
+    del camera_name
+    make_kwargs = {"render_mode": "rgb_array"}
+    if max_episode_steps is not None:
+        make_kwargs["max_episode_steps"] = int(max_episode_steps)
+    if env_name == CUSTOM_REACHER_ENV_ID:
+        env = gym.make(
+            "Reacher-v5",
+            xml_file=str(CUSTOM_REACHER_XML),
+            disable_env_checker=True,
+            **make_kwargs,
+        )
+    else:
+        env = gym.make(env_name, **make_kwargs)
     env.reset(seed=seed)
     return env
 
@@ -346,15 +314,22 @@ def main():
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    env = make_env(args.env, args.seed, image_size=args.image_size)
+    env = make_env(
+        args.env,
+        args.seed,
+        image_size=args.image_size,
+        max_episode_steps=args.max_steps,
+    )
     policy = None
     if args.policy == "random":
         policy = random_policy(env)
     elif args.policy == "mixed":
         policy = mixed_random_policy(env)
     else:
-        if "Reacher" not in args.env:
-            raise ValueError("--policy reacher_multitask requires a Reacher MuJoCo env (e.g., Reacher-v5).")
+        if "Reacher" not in args.env and args.env != CUSTOM_REACHER_ENV_ID:
+            raise ValueError(
+                "--policy reacher_multitask requires Reacher-v5 or ReacherTaskAgnostic-v0."
+            )
         reacher_tasks = [t.strip() for t in args.reacher_tasks.split(",") if t.strip()]
         invalid = [t for t in reacher_tasks if t not in REACHER_TASKS]
         if invalid:
