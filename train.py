@@ -7,6 +7,7 @@ import lightning as pl
 import stable_pretraining as spt
 import stable_worldmodel as swm
 import torch
+from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import WandbLogger
 from omegaconf import OmegaConf, open_dict
 
@@ -106,7 +107,8 @@ def run(cfg):
     ##########################
 
     run_id = cfg.get("subdir") or ""
-    run_dir = Path(swm.data.utils.get_cache_dir(sub_folder='checkpoints'), run_id)
+    cache_root = swm.data.utils.get_cache_dir()
+    run_dir = Path(cache_root, "checkpoints", run_id)
 
     logger = None
     if cfg.wandb.enabled:
@@ -118,23 +120,40 @@ def run(cfg):
         OmegaConf.save(cfg, f)
 
     object_dump_callback = SaveCkptCallback(
-        run_name=cfg.output_model_name, cfg=cfg.model, epoch_interval=1,
+        run_name=run_id,
+        cfg=cfg.model,
+        run_dir=run_dir,
+        cache_dir=str(cache_root),
+        resume_alias=f"{cfg.output_model_name}_weights.ckpt",
+        epoch_interval=1,
+    )
+
+    last_ckpt_callback = ModelCheckpoint(
+        dirpath=str(run_dir),
+        filename="last",
+        monitor=None,
+        save_top_k=1,
+        save_last=True,
+        every_n_epochs=1,
+        save_on_train_epoch_end=True,
     )
 
     trainer = pl.Trainer(
         **cfg.trainer,
-        callbacks=[object_dump_callback],
+        callbacks=[last_ckpt_callback, object_dump_callback],
         num_sanity_val_steps=1,
         logger=logger,
         enable_checkpointing=True,
     )
 
-    ckpt_path = run_dir / f"{cfg.output_model_name}_weights.ckpt"
+    ckpt_alias = run_dir / f"{cfg.output_model_name}_weights.ckpt"
+    ckpt_last = run_dir / "last.ckpt"
+    ckpt_path = ckpt_alias if ckpt_alias.exists() else (ckpt_last if ckpt_last.exists() else None)
     manager = spt.Manager(
         trainer=trainer,
         module=world_model,
         data=data_module,
-        ckpt_path=ckpt_path if ckpt_path.exists() else None,
+        ckpt_path=ckpt_path,
     )
 
     manager()

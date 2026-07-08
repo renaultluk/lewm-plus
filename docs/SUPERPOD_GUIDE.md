@@ -310,7 +310,7 @@ bash superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100 output_model_na
 ```
 
 Training output goes to `outputs/train-<JOBID>.out` and checkpoints are saved
-to `.stable-wm/checkpoints/<output_model_name>/`.
+to `.stable-wm/checkpoints/<subdir>/`.
 
 ### Step 4 — Monitor
 

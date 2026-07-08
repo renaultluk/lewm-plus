@@ -27,6 +27,7 @@ uv pip install stable-worldmodel[train,env]
 - `STABLEWM_HOME` controls where datasets/checkpoints are resolved.
 - Default is `~/.stable-wm` unless overridden.
 - In SuperPOD jobs, scripts mount host `${STABLEWM_HOME}` into container at `/workspace/.stable-wm`.
+- `superpod/train_lewm.sh` also sets `SPT_CACHE_DIR=${STABLEWM_HOME}` so Lightning/stable-pretraining checkpoints stay under the same root.
 
 ### Data expectations
 - For `data=pusht_h5`, canonical dataset path is `${STABLEWM_HOME}/datasets/pusht_expert_train.h5`.
@@ -83,6 +84,7 @@ bash superpod/evaluate_lewm.sh --config-name=pusht.yaml policy=pusht_h5_replicat
 - Container expectation: `superpod/Dockerfile` sets `STABLEWM_HOME=/workspace/.stable-wm` and uses `/workspace/.venv/bin/python`.
 - Mount strategy: host `${STABLEWM_HOME}` is mounted to container `/workspace/.stable-wm` (no `--container-env` requirement).
 - Walltime control: set `TRAIN_TIME` in `superpod/superpod.env` (e.g. `71:00:00` under a 72h cap).
+- Checkpoint layout: both `.pt` and `.ckpt` files for a run now live under `${STABLEWM_HOME}/checkpoints/<subdir>/`.
 - Preferred training command:
   ```bash
   bash superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100 output_model_name=pusht_h5_replicate wandb.enabled=false

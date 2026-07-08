@@ -103,6 +103,10 @@ MOUNTS="/project:/project,/home:/home,${STABLEWM_HOME}:/workspace/.stable-wm"
 # On some compute nodes srun is a wrapper that requires the slurm module.
 module load slurm 2>/dev/null || true
 
+# Keep stable-pretraining run artifacts under STABLEWM_HOME for a single
+# checkpoint root instead of ~/.cache/stable-pretraining.
+export SPT_CACHE_DIR="$STABLEWM_HOME"
+
 srun --container-image "$CONTAINER_PATH" \
      --container-mounts "$MOUNTS" \
      --container-writable \
