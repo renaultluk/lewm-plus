@@ -73,7 +73,7 @@ def _sample_push_layout(rng):
         goal = _sample_workspace_point(rng, radius=0.14)
         obj = _sample_workspace_point(rng, radius=0.11)
         d = float(np.linalg.norm(goal - obj))
-        if 0.06 <= d <= 0.20:
+        if 0.09 <= d <= 0.18:
             return obj, goal
     return obj, goal
 
@@ -83,7 +83,7 @@ def _sample_purple_layout(rng):
         obj = _sample_workspace_point(rng, radius=0.10)
         edge = _sample_edge_point(rng, radius=0.21)
         d = float(np.linalg.norm(edge - obj))
-        if 0.05 <= d <= 0.18:
+        if 0.08 <= d <= 0.18:
             return obj, edge
     return obj, edge
 
@@ -106,6 +106,21 @@ def _ik_reacher(goal_xy, link1=REACHER_LINK_1, link2=REACHER_LINK_2, elbow_sign=
     return np.array([q1, q2], dtype=np.float32)
 
 
+def _clamp_to_reacher_workspace(xy, max_radius=0.195):
+    r = float(np.linalg.norm(xy))
+    if r <= max_radius:
+        return xy.astype(np.float32)
+    return (xy / (r + 1e-6) * max_radius).astype(np.float32)
+
+
+def _wrap_angle(a):
+    return (a + np.pi) % (2.0 * np.pi) - np.pi
+
+
+def _angle_diff(target, current):
+    return _wrap_angle(target - current)
+
+
 def _ee_controller(q, goal_xy, qvel=None, link1=REACHER_LINK_1, link2=REACHER_LINK_2, gain=18.0):
     q1, q2 = float(q[0]), float(q[1])
     ee = _fk_reacher(q, link1=link1, link2=link2)
@@ -119,6 +134,18 @@ def _ee_controller(q, goal_xy, qvel=None, link1=REACHER_LINK_1, link2=REACHER_LI
     action = gain * jacobian.T @ delta
     if qvel is not None:
         action = action - (0.9 * np.asarray(qvel, dtype=np.float32))
+    return np.clip(action, -1.0, 1.0).astype(np.float32)
+
+
+def _ee_joint_controller(q, goal_xy, qvel=None, gain=2.6, damping=0.8):
+    q_goal_a = _ik_reacher(goal_xy, elbow_sign=1.0)
+    q_goal_b = _ik_reacher(goal_xy, elbow_sign=-1.0)
+    err_a = _angle_diff(q_goal_a, q)
+    err_b = _angle_diff(q_goal_b, q)
+    err = err_a if float(np.linalg.norm(err_a)) <= float(np.linalg.norm(err_b)) else err_b
+    action = gain * err
+    if qvel is not None:
+        action = action - (damping * np.asarray(qvel, dtype=np.float32))
     return np.clip(action, -1.0, 1.0).astype(np.float32)
 
 
@@ -136,9 +163,13 @@ def _init_reacher_task(env, task_name, rng):
     qvel[:2] = 0.0
 
     if task_name == "reach_red_spot":
-        qpos[:2] = _ik_reacher(target, elbow_sign=1.0 if rng.random() < 0.5 else -1.0)
+        away = -target
+        if float(np.linalg.norm(away)) < 0.06:
+            away = target + np.array([0.12, -0.08], dtype=np.float32)
+        start_tip = _clamp_to_reacher_workspace(away)
+        qpos[:2] = _ik_reacher(start_tip, elbow_sign=1.0 if rng.random() < 0.5 else -1.0)
         env.unwrapped.set_state(qpos, qvel)
-        return {"name": task_name}
+        return {"name": task_name, "settle_radius": 0.014}
 
     if task_name == "push_blue_object_to_blue_spot":
         push_dir = blue_goal - blue_obj
@@ -146,7 +177,7 @@ def _init_reacher_task(env, task_name, rng):
         start_tip = blue_obj - 0.035 * push_hat
         qpos[:2] = _ik_reacher(start_tip, elbow_sign=1.0 if rng.random() < 0.5 else -1.0)
         env.unwrapped.set_state(qpos, qvel)
-        return {"name": task_name}
+        return {"name": task_name, "in_contact": False}
 
     if task_name == "push_purple_ball_to_edge":
         qpos[:2] = _ik_reacher(purple_obj, elbow_sign=1.0 if rng.random() < 0.5 else -1.0)
@@ -154,15 +185,16 @@ def _init_reacher_task(env, task_name, rng):
         return {
             "name": task_name,
             "edge_goal": purple_edge,
+            "in_contact": False,
         }
 
     if task_name == "fold_in_on_itself":
         q_goal = np.array([1.6, -2.5], dtype=np.float32)
         if rng.random() < 0.5:
             q_goal = -q_goal
-        qpos[:2] = np.array([0.0, 0.0], dtype=np.float32)
+        qpos[:2] = np.array([-0.9, 1.2], dtype=np.float32)
         env.unwrapped.set_state(qpos, qvel)
-        return {"name": task_name, "joint_goal": q_goal}
+        return {"name": task_name, "joint_goal": q_goal, "settle_err": 0.05}
 
     if task_name == "trace_circle":
         qpos[:2] = _ik_reacher(target, elbow_sign=1.0 if rng.random() < 0.5 else -1.0)
@@ -177,8 +209,10 @@ def _init_reacher_task(env, task_name, rng):
     raise ValueError(f"Unknown reacher task: {task_name}")
 
 
-def _joint_controller(q, q_goal, gain=2.0):
+def _joint_controller(q, q_goal, qvel=None, gain=1.2, damping=0.7):
     action = gain * (q_goal - q)
+    if qvel is not None:
+        action = action - (damping * qvel)
     return np.clip(action, -1.0, 1.0).astype(np.float32)
 
 
@@ -215,7 +249,9 @@ def _reacher_task_action(env, task_state, rng, step_idx, prev_action):
     name = task_state["name"]
 
     if name == "reach_red_spot":
-        return _ee_controller(q, target_xy, qvel=qvel)
+        if float(np.linalg.norm(target_xy - ee_xy)) < float(task_state.get("settle_radius", 0.014)):
+            return np.zeros(2, dtype=np.float32)
+        return _ee_joint_controller(q, target_xy, qvel=qvel, gain=2.8, damping=0.9)
 
     if name == "push_blue_object_to_blue_spot":
         obj_xy = _get_body_xy(env, "blue_object")
@@ -223,10 +259,22 @@ def _reacher_task_action(env, task_state, rng, step_idx, prev_action):
         dist_to_goal = float(np.linalg.norm(goal_xy - obj_xy))
         if dist_to_goal < 0.02:
             return np.zeros(2, dtype=np.float32)
+        if _has_geom_contact(env, "fingertip", "blue_object_geom"):
+            task_state["in_contact"] = True
         push_dir = goal_xy - obj_xy
         push_hat = push_dir / (float(np.linalg.norm(push_dir)) + 1e-6)
-        desired_tip = obj_xy - 0.030 * push_hat
-        return _ee_controller(q, desired_tip, qvel=qvel, gain=12.0)
+        tip_to_obj = float(np.linalg.norm(ee_xy - obj_xy))
+        if (not task_state.get("in_contact", False)) and tip_to_obj < 0.040:
+            task_state["in_contact"] = True
+        if task_state.get("in_contact", False) and tip_to_obj > 0.06:
+            task_state["in_contact"] = False
+        if task_state.get("in_contact", False):
+            desired_tip = obj_xy + (0.016 * push_hat)
+            gain = 2.4
+        else:
+            desired_tip = obj_xy - (0.044 * push_hat)
+            gain = 2.9
+        return _ee_joint_controller(q, desired_tip, qvel=qvel, gain=gain, damping=0.9)
 
     if name == "push_purple_ball_to_edge":
         obj_xy = _get_body_xy(env, "purple_ball")
@@ -234,13 +282,28 @@ def _reacher_task_action(env, task_state, rng, step_idx, prev_action):
         dist_to_goal = float(np.linalg.norm(edge_goal - obj_xy))
         if dist_to_goal < 0.02:
             return np.zeros(2, dtype=np.float32)
+        if _has_geom_contact(env, "fingertip", "purple_ball_geom"):
+            task_state["in_contact"] = True
         push_dir = edge_goal - obj_xy
         push_hat = push_dir / (float(np.linalg.norm(push_dir)) + 1e-6)
-        desired_tip = obj_xy - 0.030 * push_hat
-        return _ee_controller(q, desired_tip, qvel=qvel, gain=12.0)
+        tip_to_obj = float(np.linalg.norm(ee_xy - obj_xy))
+        if (not task_state.get("in_contact", False)) and tip_to_obj < 0.040:
+            task_state["in_contact"] = True
+        if task_state.get("in_contact", False) and tip_to_obj > 0.06:
+            task_state["in_contact"] = False
+        if task_state.get("in_contact", False):
+            desired_tip = obj_xy + (0.016 * push_hat)
+            gain = 2.4
+        else:
+            desired_tip = obj_xy - (0.044 * push_hat)
+            gain = 2.9
+        return _ee_joint_controller(q, desired_tip, qvel=qvel, gain=gain, damping=0.9)
 
     if name == "fold_in_on_itself":
-        return _joint_controller(q, task_state["joint_goal"])
+        err = task_state["joint_goal"] - q
+        if float(np.linalg.norm(err)) < float(task_state.get("settle_err", 0.05)):
+            return np.zeros(2, dtype=np.float32)
+        return _joint_controller(q, task_state["joint_goal"], qvel=qvel, gain=0.8, damping=1.1)
 
     if name == "trace_circle":
         phase = task_state["phase0"] + task_state["omega"] * step_idx
