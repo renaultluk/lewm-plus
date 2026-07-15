@@ -48,6 +48,43 @@ fi
 cd "$PROJECT_DIR"
 mkdir -p outputs
 
+# Keep evaluation dataset/cache resolution under the mounted STABLEWM_HOME
+# inside the container, regardless of host defaults.
+CONTAINER_STABLEWM_HOME="/workspace/.stable-wm"
+
+HAS_CACHE_DIR_OVERRIDE=false
+HAS_DATASET_NAME_OVERRIDE=false
+USE_PUSHT_EVAL=false
+EXTRA_ARGS=()
+for arg in "$@"; do
+    if [[ "$arg" == cache_dir=* ]]; then
+        HAS_CACHE_DIR_OVERRIDE=true
+    fi
+    if [[ "$arg" == eval.dataset_name=* ]]; then
+        HAS_DATASET_NAME_OVERRIDE=true
+    fi
+    if [[ "$arg" == "--config-name=pusht.yaml" ]] || [[ "$arg" == "--config-name=pusht" ]] || [[ "$arg" == "experiment=pusht_h5_replicate" ]] || [[ "$arg" == "+experiment=pusht_h5_replicate" ]]; then
+        USE_PUSHT_EVAL=true
+    fi
+done
+
+if [[ "$HAS_CACHE_DIR_OVERRIDE" == false ]]; then
+    EXTRA_ARGS+=("cache_dir=${CONTAINER_STABLEWM_HOME}")
+fi
+
+if [[ "$USE_PUSHT_EVAL" == true ]] && [[ "$HAS_DATASET_NAME_OVERRIDE" == false ]]; then
+    EXPECTED_H5="${STABLEWM_HOME}/datasets/pusht_expert_train.h5"
+    NESTED_H5="${STABLEWM_HOME}/datasets/pusht/pusht_expert_train.h5"
+    CONTAINER_NESTED_H5="${CONTAINER_STABLEWM_HOME}/datasets/pusht/pusht_expert_train.h5"
+
+    if [[ -f "$EXPECTED_H5" ]]; then
+        :
+    elif [[ -f "$NESTED_H5" ]]; then
+        echo "INFO: using nested PushT HDF5 path for eval: $NESTED_H5" >&2
+        EXTRA_ARGS+=("eval.dataset_name=${CONTAINER_NESTED_H5}")
+    fi
+fi
+
 # Combined list of extra mounts. We also map the host's .stable-wm directory
 # to /workspace/.stable-wm inside the container, which matches the Dockerfile.
 MOUNTS="/project:/project,/home:/home,${STABLEWM_HOME}:/workspace/.stable-wm"
@@ -59,4 +96,4 @@ srun --container-image "$CONTAINER_PATH" \
      --container-mounts "$MOUNTS" \
      --container-writable \
      --container-workdir "$PROJECT_DIR" \
-     /workspace/.venv/bin/python eval.py "$@"
+     /usr/bin/env STABLEWM_HOME="${CONTAINER_STABLEWM_HOME}" /workspace/.venv/bin/python eval.py "${EXTRA_ARGS[@]}" "$@"

@@ -29,6 +29,12 @@ read -rp "CPU partition (default: cpu): " PARTITION_CPU
 PARTITION_CPU=${PARTITION_CPU:-cpu}
 read -rp "Project group name (e.g. cse): " GROUP
 read -rp "Your HKUST username (no @ust.hk): " USER
+read -rp "Training nodes (default: 1): " TRAIN_NODES
+TRAIN_NODES=${TRAIN_NODES:-1}
+read -rp "Training ntasks (default: 1): " TRAIN_NTASKS
+TRAIN_NTASKS=${TRAIN_NTASKS:-1}
+read -rp "GPUs per training node (default: 1): " TRAIN_GPUS_PER_NODE
+TRAIN_GPUS_PER_NODE=${TRAIN_GPUS_PER_NODE:-1}
 read -rp "CPU cores per GPU job (default: 28): " CPUS_PER_TASK
 CPUS_PER_TASK=${CPUS_PER_TASK:-28}
 read -rp "CPU cores per CPU job (default: 8): " CPUS_PER_TASK_CPU
@@ -48,6 +54,10 @@ SUPERPOD_USER=${USER}
 
 PROJECT_DIR=/project/\${SUPERPOD_GROUP}/lewm-plus
 CONTAINER_PATH=\$HOME/containers/lewm.sqsh
+
+TRAIN_NODES=${TRAIN_NODES}
+TRAIN_NTASKS=${TRAIN_NTASKS}
+TRAIN_GPUS_PER_NODE=${TRAIN_GPUS_PER_NODE}
 
 CPUS_PER_TASK=${CPUS_PER_TASK}
 CPUS_PER_TASK_CPU=${CPUS_PER_TASK_CPU}

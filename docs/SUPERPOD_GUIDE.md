@@ -167,6 +167,9 @@ Variables you can tune in `superpod.env`:
 | `SUPERPOD_USER`           | Your HKUST username                             | `renaultluk`    |
 | `PROJECT_DIR`             | Repository root on SuperPOD                     | `/project/...`  |
 | `CONTAINER_PATH`          | Path to the Enroot `.sqsh` container            | `~/containers/...` |
+| `TRAIN_NODES`             | Number of nodes for training jobs               | `1`             |
+| `TRAIN_NTASKS`            | Number of tasks for training jobs               | `1`             |
+| `TRAIN_GPUS_PER_NODE`     | GPUs requested per training node                | `1`             |
 | `CPUS_PER_TASK`           | CPU cores for GPU jobs                          | `28`            |
 | `CPUS_PER_TASK_CPU`       | CPU cores for CPU jobs                          | `8`             |
 | `TRAIN_TIME`              | Walltime for `train_lewm.sh` jobs              | `71:00:00`      |
@@ -201,6 +204,8 @@ sacct -j <JOBID> --format=JobID,JobName,Partition,State,ExitCode,Elapsed
 | ------------------------------ | -------------------------------------------------- |
 | `train_lewm.sh`                | Generic training job with container                |
 | `evaluate_lewm.sh`             | Generic evaluation job with container              |
+| `migrate_checkpoints.sh`       | Consolidate old checkpoint layouts into new layout |
+| `convert_ckpt_to_eval_pt.sh`   | Convert training `.ckpt` to eval-ready `.pt`      |
 | `interactive_gpu.sh`           | Request a GPU shell for debugging                  |
 | `download_datasets.sh`         | Use `hf` to download official datasets to scratch  |
 | `sync_to_superpod.sh`          | One-command rsync from local machine               |
@@ -324,9 +329,55 @@ sacct -j <JOBID> --format=JobID,Partition,State,ExitCode,Elapsed,ReqTRES
 ```bash
 bash superpod/evaluate_lewm.sh \
     --config-name=pusht.yaml \
-    policy=pusht_h5_replicate/pusht_h5_replicate \
-    eval.num_eval=50
+    policy=pusht_h5_replicate_run/weights_epoch_70.pt \
+    eval.num_eval=50 \
+    cache_dir=/workspace/.stable-wm \
+    eval.dataset_name=/workspace/.stable-wm/datasets/pusht/pusht_expert_train
 ```
+
+### Optional — Migrate old checkpoint layout
+
+If your earlier runs stored files under mixed old paths (for example
+`.stable-wm/checkpoints/<output_model_name>/weights_epoch_*.pt` and a flat
+`.stable-wm/checkpoints/<output_model_name>_weights.ckpt`), migrate them into
+the unified run directory layout:
+
+```bash
+bash superpod/migrate_checkpoints.sh pusht_h5_replicate_run pusht_h5_replicate
+```
+
+After migration, files are consolidated under:
+
+```text
+.stable-wm/checkpoints/pusht_h5_replicate_run/
+```
+
+and you can evaluate with a policy path relative to `checkpoints/`, e.g.
+`policy=pusht_h5_replicate_run/weights_epoch_70.pt`.
+
+If migration yields only `.ckpt` files (no `weights_epoch_*.pt`), convert to an
+eval-ready policy folder:
+
+```bash
+bash superpod/convert_ckpt_to_eval_pt.sh \
+    --src-ckpt /project/<GROUP>/lewm-plus/.stable-wm/checkpoints/pusht_h5_replicate_run/pusht_h5_replicate_weights.ckpt \
+    --run-name pusht_h5_replicate_eval
+```
+
+Then evaluate with:
+
+```bash
+bash superpod/evaluate_lewm.sh \
+    --config-name=pusht.yaml \
+    policy=pusht_h5_replicate_eval \
+    eval.num_eval=50 \
+    cache_dir=/workspace/.stable-wm \
+    eval.dataset_name=/workspace/.stable-wm/datasets/pusht/pusht_expert_train
+```
+
+Note: the converter helper runs in the GPU partition using the same Pyxis
+container stack as training/eval. On SuperPOD, Pyxis container hooks require
+`nvidia-container-cli`, which is not available on CPU-only jobs.
 
 ## 7. Step-by-Step: Interactive Debugging on a GPU Node
 

@@ -47,9 +47,11 @@ bash superpod/configure_superpod.sh
 bash superpod/sync_to_superpod.sh
 bash superpod/hello_superpod.sh
 bash superpod/hello_superpod_gpu.sh
+bash superpod/migrate_checkpoints.sh pusht_h5_replicate_run pusht_h5_replicate
+bash superpod/convert_ckpt_to_eval_pt.sh --src-ckpt /project/<GROUP>/lewm-plus/.stable-wm/checkpoints/pusht_h5_replicate_run/pusht_h5_replicate_weights.ckpt --run-name pusht_h5_replicate_eval
 bash superpod/resume_train.sh pusht_h5_replicate_run 70 100
 bash superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100 output_model_name=pusht_h5_replicate wandb.enabled=false
-bash superpod/evaluate_lewm.sh --config-name=pusht.yaml policy=pusht_h5_replicate/pusht_h5_replicate eval.num_eval=50
+bash superpod/evaluate_lewm.sh --config-name=pusht.yaml policy=pusht_h5_replicate_run/weights_epoch_70.pt eval.num_eval=50 cache_dir=/workspace/.stable-wm eval.dataset_name=/workspace/.stable-wm/datasets/pusht/pusht_expert_train
 ```
 
 ## Testing and Verification
@@ -84,7 +86,9 @@ bash superpod/evaluate_lewm.sh --config-name=pusht.yaml policy=pusht_h5_replicat
 - Container expectation: `superpod/Dockerfile` sets `STABLEWM_HOME=/workspace/.stable-wm` and uses `/workspace/.venv/bin/python`.
 - Mount strategy: host `${STABLEWM_HOME}` is mounted to container `/workspace/.stable-wm` (no `--container-env` requirement).
 - Walltime control: set `TRAIN_TIME` in `superpod/superpod.env` (e.g. `71:00:00` under a 72h cap).
+- Training resource controls: set `TRAIN_NODES`, `TRAIN_NTASKS`, and `TRAIN_GPUS_PER_NODE` in `superpod/superpod.env`.
 - Checkpoint layout: both `.pt` and `.ckpt` files for a run now live under `${STABLEWM_HOME}/checkpoints/<subdir>/`.
+- For old runs, use `bash superpod/migrate_checkpoints.sh <run_id> <output_model_name>` to consolidate mixed legacy paths into `${STABLEWM_HOME}/checkpoints/<subdir>/`.
 - Preferred training command:
   ```bash
   bash superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100 output_model_name=pusht_h5_replicate wandb.enabled=false
@@ -95,7 +99,7 @@ bash superpod/evaluate_lewm.sh --config-name=pusht.yaml policy=pusht_h5_replicat
   ```
 - Preferred eval command:
   ```bash
-  bash superpod/evaluate_lewm.sh --config-name=pusht.yaml policy=pusht_h5_replicate/pusht_h5_replicate eval.num_eval=50
+  bash superpod/evaluate_lewm.sh --config-name=pusht.yaml policy=pusht_h5_replicate_run/weights_epoch_70.pt eval.num_eval=50 cache_dir=/workspace/.stable-wm eval.dataset_name=/workspace/.stable-wm/datasets/pusht/pusht_expert_train
   ```
 - Dataset resolution for `data=pusht_h5`:
   - Canonical: `${STABLEWM_HOME}/datasets/pusht_expert_train.h5`

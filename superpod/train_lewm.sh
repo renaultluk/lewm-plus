@@ -29,10 +29,10 @@ if [[ -z "${SLURM_JOB_ID:-}" ]]; then
 #SBATCH --output=outputs/train-%j.out
 #SBATCH --error=outputs/train-%j.err
 #SBATCH --open-mode=truncate
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
+#SBATCH --nodes=${TRAIN_NODES}
+#SBATCH --ntasks=${TRAIN_NTASKS}
 #SBATCH --cpus-per-task=${CPUS_PER_TASK}
-#SBATCH --gpus-per-node=1
+#SBATCH --gpus-per-node=${TRAIN_GPUS_PER_NODE}
 #SBATCH --account=${SUPERPOD_ACCOUNT}
 #SBATCH --partition=${SUPERPOD_PARTITION_GPU}
 #SBATCH --time=${TRAIN_TIME}
