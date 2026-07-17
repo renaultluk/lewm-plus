@@ -1,0 +1,8 @@
+# @package _global_
+
+sigreg_enabled: true
+freeze_encoder: false
+
+loss:
+  sigreg:
+    weight: 0.09

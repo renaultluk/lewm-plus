@@ -82,6 +82,35 @@ bash superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100 output_model_na
 bash superpod/evaluate_lewm.sh --config-name=pusht.yaml policy=pusht_h5_replicate_run/weights_epoch_70.pt eval.num_eval=50 cache_dir=/workspace/.stable-wm eval.dataset_name=/workspace/.stable-wm/datasets/pusht/pusht_expert_train
 ```
 
+## Two-Phase Training (Pretrain → Finetune)
+
+The training script supports two-phase training via config overrides.
+
+### Phase 1 — Pretrain with SIGReg on task-agnostic data
+```bash
+python train.py data=reacher_agnostic \
+  loss.sigreg.weight=0.09 \
+  sigreg_enabled=true \
+  freeze_encoder=false \
+  trainer.max_epochs=50 \
+  output_model_name=reacher_pretrain
+```
+
+### Phase 2 — Finetune on task data (SIGReg off, encoder frozen)
+```bash
+python train.py data=pusht_h5 \
+  sigreg_enabled=false \
+  freeze_encoder=true \
+  trainer.max_epochs=100 \
+  output_model_name=pusht_finetuned \
+  ckpt_path=/absolute/path/to/reacher_pretrain_weights.ckpt
+```
+
+Key flags:
+- `sigreg_enabled=false` — disables SIGReg loss computation (only prediction loss remains).
+- `freeze_encoder=true` — sets `requires_grad=False` on all encoder parameters.
+- `ckpt_path=/path/to/model.ckpt` — loads pretrained weights via `spt.Manager(weights_only=True)`.
+
 ## Testing and Verification
 - There is currently no formal `pytest` suite in this repo.
 - Minimum checks before pushing:

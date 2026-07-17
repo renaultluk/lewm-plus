@@ -38,8 +38,13 @@ def lejepa_forward(self, batch, stage, cfg):
 
     # LeWM loss
     output["pred_loss"] = (pred_emb - tgt_emb).pow(2).mean()
-    output["sigreg_loss"]= self.sigreg(emb.transpose(0, 1))
-    output["loss"] = output["pred_loss"] + lambd * output["sigreg_loss"]  
+
+    if cfg.sigreg_enabled and self.sigreg is not None:
+        output["sigreg_loss"] = self.sigreg(emb.transpose(0, 1))
+        output["loss"] = output["pred_loss"] + lambd * output["sigreg_loss"]
+    else:
+        output["sigreg_loss"] = torch.tensor(0.0, device=emb.device)
+        output["loss"] = output["pred_loss"]
 
     losses_dict = {f"{stage}/{k}": v.detach() for k, v in output.items() if "loss" in k}
     self.log_dict(losses_dict, on_step=True, sync_dist=True)
@@ -85,6 +90,10 @@ def run(cfg):
 
     world_model = hydra.utils.instantiate(cfg.model)
 
+    if cfg.freeze_encoder:
+        for param in world_model.encoder.parameters():
+            param.requires_grad = False
+
     optimizers = {
         'model_opt': {
             "modules": 'model',
@@ -97,7 +106,7 @@ def run(cfg):
     data_module = spt.data.DataModule(train=train, val=val)
     world_model = spt.Module(
         model = world_model,
-        sigreg = SIGReg(**cfg.loss.sigreg.kwargs),
+        sigreg = SIGReg(**cfg.loss.sigreg.kwargs) if cfg.sigreg_enabled else None,
         forward=partial(lejepa_forward, cfg=cfg),
         optim=optimizers,
     )
@@ -146,9 +155,11 @@ def run(cfg):
         enable_checkpointing=True,
     )
 
-    ckpt_alias = run_dir / f"{cfg.output_model_name}_weights.ckpt"
-    ckpt_last = run_dir / "last.ckpt"
-    ckpt_path = ckpt_alias if ckpt_alias.exists() else (ckpt_last if ckpt_last.exists() else None)
+    ckpt_path = cfg.get("ckpt_path", None)
+    if ckpt_path is None:
+        ckpt_alias = run_dir / f"{cfg.output_model_name}_weights.ckpt"
+        ckpt_last = run_dir / "last.ckpt"
+        ckpt_path = ckpt_alias if ckpt_alias.exists() else (ckpt_last if ckpt_last.exists() else None)
     manager = spt.Manager(
         trainer=trainer,
         module=world_model,
