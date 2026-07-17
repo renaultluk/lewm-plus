@@ -57,6 +57,16 @@ python eval.py --config-name=pusht.yaml policy=random eval.num_eval=2
   --dataset .stable-wm/datasets/reacher_task_agnostic_xml_smoke_224.lance \
   --episode 0 \
   --output .stable-wm/datasets/reacher_task_agnostic_xml_smoke_224_ep0.mp4
+
+# SuperPOD full-scale generation (comparable training scale)
+bash superpod/generate_reacher_dataset.sh \
+  EPISODES=10000 \
+  MAX_STEPS=100 \
+  IMAGE_SIZE=224 \
+  OUTPUT_NAME=reacher_task_agnostic_train_224
+
+# If render init fails on a node, force headless backend explicitly
+bash superpod/generate_reacher_dataset.sh MUJOCO_GL_BACKEND=osmesa
 ```
 
 ### SuperPOD workflow

@@ -353,8 +353,8 @@ def collect_reacher_multitask_episode(env, max_steps, image_size, seed, tasks):
             tip_to_object_dist.append(np.float32(np.linalg.norm(tip_xy - obj_xy)))
             push_contact.append(bool(_has_geom_contact(env, "fingertip", "purple_ball_geom")))
         else:
-            object_to_goal_dist.append(np.float32(np.nan))
-            tip_to_object_dist.append(np.float32(np.nan))
+            object_to_goal_dist.append(np.float32(-1.0))
+            tip_to_object_dist.append(np.float32(-1.0))
             push_contact.append(False)
 
         obs = next_obs
@@ -442,7 +442,21 @@ def mixed_random_policy(env, frac_zero=0.2):
     return policy
 
 
+def _patch_is_image_column():
+    import stable_worldmodel.data.formats.lance as _lance
+    _orig = _lance.is_image_column
+    def _patched(vals):
+        if isinstance(vals, np.ndarray):
+            return False
+        try:
+            return _orig(vals)
+        except ValueError:
+            return False
+    _lance.is_image_column = _patched
+
+
 def main():
+    _patch_is_image_column()
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", required=True, help="Gymnasium MuJoCo env id, e.g. HalfCheetah-v5")
     parser.add_argument("--output", required=True, help="Path to output .lance dataset")
