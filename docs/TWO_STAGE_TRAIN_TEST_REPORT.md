@@ -155,18 +155,20 @@ setting 20 gives 10 finetuning epochs (epochs 10–19).
 
 ### 4.1 Phase 1 — Pretrain on Agnostic Data (job 478170)
 
-| Epoch | pred_loss | sigreg_loss | Time |
+| Epoch | pred_loss | sigreg_loss | Time/epoch |
 |---|---|---|---|
-| 1 | 0.0757 | — | — |
-| 2 | 11.32† | — | — |
-| 3 | 0.159 | — | — |
-| 4 | 0.539 | — | — |
-| 5 | 0.595 | — | — |
-| 6 | 0.0132 | — | — |
-| 7 | 0.0350 | — | — |
-| 8 | 0.0104 | — | — |
-| 9 | 0.00472 | — | — |
-| 10 | **0.00370** | **1.498** | — |
+| 1 | 0.0757 | — | 35.6s |
+| 2 | 11.32† | — | 35.7s |
+| 3 | 0.159 | — | 35.5s |
+| 4 | 0.539 | — | 35.5s |
+| 5 | 0.595 | — | 35.1s |
+| 6 | 0.0132 | — | 35.5s |
+| 7 | 0.0350 | — | 35.5s |
+| 8 | 0.0104 | — | 35.6s |
+| 9 | 0.00472 | — | 37.2s |
+| 10 | **0.00370** | **1.498** | 35.5s |
+
+**Mean time/epoch: 35.6s** | **Total: ~5.9 min**
 
 † Loss spike at epoch 2 is normal — the model is still stabilizing the predictors.
 
