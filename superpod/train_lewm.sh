@@ -109,7 +109,7 @@ export SPT_CACHE_DIR="$STABLEWM_HOME"
 
 srun --container-image "$CONTAINER_PATH" \
      --container-mounts "$MOUNTS" \
-     --container-env "STABLEWM_HOME=/workspace/.stable-wm,SPT_CACHE_DIR=/workspace/.stable-wm" \
      --container-writable \
      --container-workdir "$PROJECT_DIR" \
+     /usr/bin/env STABLEWM_HOME=/workspace/.stable-wm SPT_CACHE_DIR=/workspace/.stable-wm \
      /workspace/.venv/bin/python train.py "${EXTRA_ARGS[@]}" "$@"
