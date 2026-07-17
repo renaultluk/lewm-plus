@@ -33,6 +33,79 @@ uv pip install stable-worldmodel[train,env]
 - For `data=pusht_h5`, canonical dataset path is `${STABLEWM_HOME}/datasets/pusht_expert_train.h5`.
 - Current `superpod/train_lewm.sh` also auto-detects nested `${STABLEWM_HOME}/datasets/pusht/pusht_expert_train.h5` and injects a Hydra override.
 
+## Training
+
+The training script supports two modes: single-stage (end-to-end on one dataset) and two-stage (pretrain on task-agnostic data, then finetune on task-specific data).
+
+### Single-Stage Training
+
+Train directly on any supported dataset. SIGReg is on by default (`sigreg_enabled=true`).
+
+```bash
+# Local
+python train.py data=pusht_h5 trainer.max_epochs=100 output_model_name=my_run wandb.enabled=false
+
+# SuperPOD
+bash superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100 output_model_name=my_run wandb.enabled=false
+```
+
+### Two-Stage Training (Pretrain → Finetune)
+
+Uses the `experiment=pretrain` / `experiment=finetune` config profiles.
+
+**Phase 1 — Pretrain** with SIGReg on task-agnostic data to learn general environment dynamics:
+
+```bash
+# Local
+python train.py data=reacher_agnostic experiment=pretrain \
+  trainer.max_epochs=50 \
+  output_model_name=reacher_pretrain
+
+# SuperPOD
+bash superpod/train_lewm.sh data=reacher_agnostic experiment=pretrain \
+  trainer.max_epochs=50 \
+  output_model_name=reacher_pretrain wandb.enabled=false
+```
+
+**Phase 2 — Finetune** on task data with SIGReg off and encoder frozen:
+
+```bash
+# Local
+python train.py data=pusht_h5 experiment=finetune \
+  trainer.max_epochs=100 \
+  output_model_name=pusht_finetuned \
+  ckpt_path=/absolute/path/to/reacher_pretrain_weights.ckpt
+
+# SuperPOD
+bash superpod/train_lewm.sh data=pusht_h5 experiment=finetune \
+  trainer.max_epochs=100 \
+  output_model_name=pusht_finetuned \
+  ckpt_path=/workspace/.stable-wm/checkpoints/reacher_pretrain/reacher_pretrain_weights.ckpt \
+  wandb.enabled=false
+```
+
+Key flags:
+- `sigreg_enabled=false` — disables SIGReg loss (only prediction loss remains).
+- `freeze_encoder=true` — sets `requires_grad=False` on all encoder parameters.
+- `ckpt_path=/path/to/model.ckpt` — loads pretrained weights (used for Phase 1→2 transition).
+
+### Two-Stage via CLI Overrides
+
+The same can be done without experiment configs by passing flags directly:
+
+```bash
+# Phase 1
+python train.py data=reacher_agnostic \
+  loss.sigreg.weight=0.09 sigreg_enabled=true freeze_encoder=false \
+  trainer.max_epochs=50 output_model_name=reacher_pretrain
+
+# Phase 2
+python train.py data=pusht_h5 \
+  sigreg_enabled=false freeze_encoder=true \
+  trainer.max_epochs=100 output_model_name=pusht_finetuned \
+  ckpt_path=/absolute/path/to/reacher_pretrain_weights.ckpt
+```
+
 ## Common Commands
 
 ### Local training/eval
@@ -82,35 +155,6 @@ bash superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100 output_model_na
 bash superpod/evaluate_lewm.sh --config-name=pusht.yaml policy=pusht_h5_replicate_run/weights_epoch_70.pt eval.num_eval=50 cache_dir=/workspace/.stable-wm eval.dataset_name=/workspace/.stable-wm/datasets/pusht/pusht_expert_train
 ```
 
-## Two-Phase Training (Pretrain → Finetune)
-
-The training script supports two-phase training via config overrides.
-
-### Phase 1 — Pretrain with SIGReg on task-agnostic data
-```bash
-python train.py data=reacher_agnostic \
-  loss.sigreg.weight=0.09 \
-  sigreg_enabled=true \
-  freeze_encoder=false \
-  trainer.max_epochs=50 \
-  output_model_name=reacher_pretrain
-```
-
-### Phase 2 — Finetune on task data (SIGReg off, encoder frozen)
-```bash
-python train.py data=pusht_h5 \
-  sigreg_enabled=false \
-  freeze_encoder=true \
-  trainer.max_epochs=100 \
-  output_model_name=pusht_finetuned \
-  ckpt_path=/absolute/path/to/reacher_pretrain_weights.ckpt
-```
-
-Key flags:
-- `sigreg_enabled=false` — disables SIGReg loss computation (only prediction loss remains).
-- `freeze_encoder=true` — sets `requires_grad=False` on all encoder parameters.
-- `ckpt_path=/path/to/model.ckpt` — loads pretrained weights via `spt.Manager(weights_only=True)`.
-
 ## Testing and Verification
 - There is currently no formal `pytest` suite in this repo.
 - Minimum checks before pushing:
@@ -141,7 +185,8 @@ Key flags:
 ## Current SuperPOD Status
 - Repo: `renaultluk/lewm-plus` with SuperPOD helpers under repo-root `superpod/`.
 - Container expectation: `superpod/Dockerfile` sets `STABLEWM_HOME=/workspace/.stable-wm` and uses `/workspace/.venv/bin/python`.
-- Mount strategy: host `${STABLEWM_HOME}` is mounted to container `/workspace/.stable-wm` (no `--container-env` requirement).
+- Mount strategy: host `${STABLEWM_HOME}` is mounted to container `/workspace/.stable-wm`.
+- Container env: the Dockerfile sets `STABLEWM_HOME=/workspace/.stable-wm`, but `srun --container-image` does not reliably propagate it. Pass `--container-env STABLEWM_HOME=/workspace/.stable-wm` or use `/usr/bin/env` prefix in practice.
 - Walltime control: set `TRAIN_TIME` in `superpod/superpod.env` (e.g. `71:00:00` under a 72h cap).
 - Training resource controls: set `TRAIN_NODES`, `TRAIN_NTASKS`, and `TRAIN_GPUS_PER_NODE` in `superpod/superpod.env`.
 - Checkpoint layout: both `.pt` and `.ckpt` files for a run now live under `${STABLEWM_HOME}/checkpoints/<subdir>/`.

@@ -106,7 +106,7 @@ def run(cfg):
     data_module = spt.data.DataModule(train=train, val=val)
     world_model = spt.Module(
         model = world_model,
-        sigreg = SIGReg(**cfg.loss.sigreg.kwargs) if cfg.sigreg_enabled else None,
+        sigreg = SIGReg(**cfg.loss.sigreg.kwargs),
         forward=partial(lejepa_forward, cfg=cfg),
         optim=optimizers,
     )
