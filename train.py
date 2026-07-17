@@ -107,7 +107,7 @@ def run(cfg):
     ##########################
 
     run_id = cfg.get("subdir") or ""
-    cache_root = swm.data.utils.get_cache_dir()
+    cache_root = os.environ.get("SPT_CACHE_DIR") or swm.data.utils.get_cache_dir()
     run_dir = Path(cache_root, "checkpoints", run_id)
 
     logger = None
