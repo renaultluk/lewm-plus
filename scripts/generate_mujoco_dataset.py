@@ -12,6 +12,14 @@ python scripts/generate_mujoco_dataset.py --env Hopper-v5 --episodes 100 --outpu
 python scripts/generate_mujoco_dataset.py --env ReacherTaskAgnostic-v0 --policy reacher_multitask --episodes 200 --output ~/.stable-wm/reacher_multitask.lance
 """
 
+import os
+import sys
+
+os.environ["MUJOCO_GL_BACKEND"] = "egl"
+from mujoco.egl import GLContext as _EGLContext
+_egl_ctx = _EGLContext(224, 224)
+_egl_ctx.make_current()
+
 import argparse
 from pathlib import Path
 
@@ -379,7 +387,7 @@ def collect_reacher_multitask_episode(env, max_steps, image_size, seed, tasks):
 def make_env(env_name, seed, image_size=224, camera_name=None, max_episode_steps=None):
     """Create a renderable Gymnasium MuJoCo environment."""
     del camera_name
-    make_kwargs = {"render_mode": "rgb_array"}
+    make_kwargs = {"render_mode": "rgb_array", "width": image_size, "height": image_size}
     if max_episode_steps is not None:
         make_kwargs["max_episode_steps"] = int(max_episode_steps)
     if env_name == CUSTOM_REACHER_ENV_ID:

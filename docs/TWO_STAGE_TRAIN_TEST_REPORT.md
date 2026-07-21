@@ -213,6 +213,37 @@ setting 20 gives 10 finetuning epochs (epochs 10–19).
 
 ## 5. Analysis
 
+### 5.4 Task Performance Evaluation
+
+To measure whether lower prediction loss translates to better task performance, both models
+were evaluated on the **Reacher qpos_match** task using CEM planning:
+
+- **Eval config**: `config/eval/reacher.yaml`
+- **Dataset**: 50 random episodes × 100 steps (HDF5, generated via `env.render()`)
+- **Evaluator**: CEM planner (300 samples, 30 CEM steps, topk=30)
+- **Horizon**: 5 steps (frameskip=5, effective 25 frames)
+- **Goal**: Reach target qpos within 25 steps, evaluated over 50 trials
+- **Metric**: `success_rate` (fraction of episodes where target was reached)
+
+| Model | Success Rate | Pred Loss | Total Eval Time |
+|-------|:-----------:|:---------:|:---------------:|
+| **Single-stage** (10 epochs) | **8.0%** (4/50) | 0.00272 | 80.6s |
+| **Two-stage** (Phase 2, 10 finetune epochs) | **2.0%** (1/50) | 0.000208 | 85.8s |
+
+**Key finding**: Despite 13× lower prediction loss, the two-stage model achieves **worse**
+task performance (2% vs 8% success rate). This demonstrates that prediction loss alone is
+not a reliable proxy for downstream planning performance.
+
+Possible explanations:
+1. **Frozen encoder**: The pretrained encoder may encode features useful for prediction but
+   suboptimal for the CEM planner's gradient-based optimization.
+2. **Planning mismatch**: Lower prediction error does not guarantee better long-horizon
+   planning — the model may overfit to short-term dynamics.
+3. **Action distribution**: The agnostic pretraining used random actions; the predictor may
+   not have learned to model the consequences of goal-directed action sequences.
+4. **CEM sensitivity**: The planner hyperparameters (num_samples=300, n_steps=30) may favor
+   one model's predictive landscape over the other.
+
 ### 5.1 Loss Convergence Comparison
 
 ```

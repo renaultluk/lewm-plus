@@ -33,12 +33,20 @@ Important SuperPOD specifics:
 - **Login host:** `superpod.ust.hk` (off campus: use VPN first).
 - **GPU partition:** `normal` (allocates a whole GPU node).
 - **CPU partition:** `cpu` (for preprocessing, testing, and small jobs).
+  - **Important:** containers (Pyxis) do not work reliably on the CPU partition.
+    Use the GPU partition even for dataset generation if the CPU partition fails.
 - **Recommended environment:** container-based (`enroot`/`pyxis`). The shared
   Spack instance is at `/scratch/spack/2025` but containers are preferred.
 - **Scratch:** `/scratch/<groupname>` is temporary, **auto-purged after 30 days
   of inactivity**, and shared by your group.
 - **Home:** `/home/<username>` is persistent but limited in quota.
 - **Project:** `/project/<groupname>` for long-term shared data.
+
+### GPU Quota
+Check remaining hours with `squota`. The `mscbdt2024` account has a total of
+160 GPU-hours per user across all partitions. When exhausted, jobs get the
+reason `AssocGrpGRESMinutes` and stay PENDING until quota resets. Reduce
+requested wall time or use fewer GPUs to fit within remaining quota.
 
 ## 2. First-Time Access Checklist
 
@@ -84,6 +92,12 @@ container image in `/home`:
 ├── .stable-wm/                   # stable-worldmodel home
 │   ├── checkpoints/              # LeWM checkpoints
 │   └── datasets/                 # extracted HDF5 / Lance datasets
+│       ├── reacher_reach_eval.h5
+│       ├── reacher_push_eval.h5
+│       ├── reacher_reach_random.lance/
+│       ├── reacher_reach_expert.lance/
+│       ├── reacher_push_random.lance/
+│       ├── reacher_push_expert.lance/
 │       └── pusht_expert_train.h5
 └── outputs/                      # training logs + eval results
 ```
@@ -182,11 +196,17 @@ read it at submit/runtime and generate the correct Slurm directives automaticall
 ### 5.2 Dashboard / quick commands
 
 ```bash
-# Submit a LeWM training job
-bash superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100
+# Check remaining GPU/CPU quota
+squota
 
-# Resume-friendly two-stage pattern for 72h limits
-bash superpod/resume_train.sh pusht_h5_replicate_run 70 100
+# Submit a LeWM training job
+bash superpod/train_lewm.sh data=reacher_reach_random experiment=pretrain \
+  trainer.max_epochs=50 output_model_name=reacher_reach_pretrain wandb.enabled=false
+
+# Submit an evaluation job
+bash superpod/evaluate_lewm.sh --config-name=reacher_reach.yaml \
+  policy=reacher_reach_finetuned/weights_epoch_100.pt eval.num_eval=50 \
+  cache_dir=/workspace/.stable-wm
 
 # Check queue
 squeue --me
@@ -274,7 +294,7 @@ This runs a GPU node inside the LeWM container and prints PyTorch + CUDA info.
 It requires `~/containers/lewm.sqsh` to exist on SuperPOD. If it fails with a
 missing container error, build and upload the image first (see section 4).
 
-## 7. Step-by-Step: Run an Official Training Job on SuperPOD
+## 7. Step-by-Step: Run Training on SuperPOD
 
 These steps assume you have already:
 
@@ -297,21 +317,52 @@ automatically and generate the correct Slurm directives at submit time. You
 only need to rerun `configure_superpod.sh` if your account/partition values
 change.
 
-### Step 2 — Download/verify datasets
+### Step 2 — Generate datasets
 
-If the official PushT dataset is not yet in `.stable-wm/datasets/`:
+Use the convenience script to generate all datasets at once:
 
 ```bash
-bash superpod/download_datasets.sh
+sbatch --time=12:00:00 --ntasks=1 --gpus-per-node=1 \
+  --account=$SUPERPOD_ACCOUNT --partition=$SUPERPOD_PARTITION_GPU \
+  --job-name=gen-all \
+  --wrap="srun --container-image=$CONTAINER_PATH \
+    --container-mounts=/project:/project,/home:/home,${STABLEWM_HOME}:/workspace/.stable-wm \
+    --container-writable --container-env=STABLEWM_HOME=/workspace/.stable-wm \
+    bash /project/mscbdt2024/lewm-plus/scripts/generate_all_datasets.sh"
 ```
 
-This downloads `pusht_expert_train.h5.zst` to `/scratch/<GROUP>/datasets/` and
-extracts it. Move the final `.h5` to `.stable-wm/datasets/` when done.
+This generates:
+- 2 eval HDF5 datasets (`reacher_reach_eval.h5`, `reacher_push_eval.h5`)
+- 4 training Lance datasets (`reacher_reach_random.lance`, `reacher_reach_expert.lance`, `reacher_push_random.lance`, `reacher_push_expert.lance`)
 
-### Step 3 — Submit training
+### Step 3 — Submit two-stage training
+
+**Reach:**
 
 ```bash
-bash superpod/train_lewm.sh data=pusht_h5 trainer.max_epochs=100 output_model_name=pusht_h5_replicate
+# Phase 1 — Pretrain
+bash superpod/train_lewm.sh data=reacher_reach_random experiment=pretrain \
+  trainer.max_epochs=50 output_model_name=reacher_reach_pretrain wandb.enabled=false
+
+# Phase 2 — Finetune (after Phase 1 completes)
+bash superpod/train_lewm.sh data=reacher_reach_expert experiment=finetune \
+  trainer.max_epochs=100 output_model_name=reacher_reach_finetuned \
+  ckpt_path=/workspace/.stable-wm/checkpoints/reacher_reach_pretrain/reacher_reach_pretrain_weights.ckpt \
+  wandb.enabled=false
+```
+
+**Push:**
+
+```bash
+# Phase 1 — Pretrain
+bash superpod/train_lewm.sh data=reacher_push_random experiment=pretrain \
+  trainer.max_epochs=50 output_model_name=reacher_push_pretrain wandb.enabled=false
+
+# Phase 2 — Finetune
+bash superpod/train_lewm.sh data=reacher_push_expert experiment=finetune \
+  trainer.max_epochs=100 output_model_name=reacher_push_finetuned \
+  ckpt_path=/workspace/.stable-wm/checkpoints/reacher_push_pretrain/reacher_push_pretrain_weights.ckpt \
+  wandb.enabled=false
 ```
 
 Training output goes to `outputs/train-<JOBID>.out` and checkpoints are saved
@@ -321,63 +372,21 @@ to `.stable-wm/checkpoints/<subdir>/`.
 
 ```bash
 squeue --me
+squota                                  # check remaining hours
 sacct -j <JOBID> --format=JobID,Partition,State,ExitCode,Elapsed,ReqTRES
 ```
 
-### Step 5 — Evaluate the checkpoint
+### Step 5 — Evaluate
 
 ```bash
-bash superpod/evaluate_lewm.sh \
-    --config-name=pusht.yaml \
-    policy=pusht_h5_replicate_run/weights_epoch_70.pt \
-    eval.num_eval=50 \
-    cache_dir=/workspace/.stable-wm \
-    eval.dataset_name=/workspace/.stable-wm/datasets/pusht/pusht_expert_train
+bash superpod/evaluate_lewm.sh --config-name=reacher_reach.yaml \
+  policy=reacher_reach_finetuned/weights_epoch_100.pt eval.num_eval=50 \
+  cache_dir=/workspace/.stable-wm
+
+bash superpod/evaluate_lewm.sh --config-name=reacher_push.yaml \
+  policy=reacher_push_finetuned/weights_epoch_100.pt eval.num_eval=50 \
+  cache_dir=/workspace/.stable-wm
 ```
-
-### Optional — Migrate old checkpoint layout
-
-If your earlier runs stored files under mixed old paths (for example
-`.stable-wm/checkpoints/<output_model_name>/weights_epoch_*.pt` and a flat
-`.stable-wm/checkpoints/<output_model_name>_weights.ckpt`), migrate them into
-the unified run directory layout:
-
-```bash
-bash superpod/migrate_checkpoints.sh pusht_h5_replicate_run pusht_h5_replicate
-```
-
-After migration, files are consolidated under:
-
-```text
-.stable-wm/checkpoints/pusht_h5_replicate_run/
-```
-
-and you can evaluate with a policy path relative to `checkpoints/`, e.g.
-`policy=pusht_h5_replicate_run/weights_epoch_70.pt`.
-
-If migration yields only `.ckpt` files (no `weights_epoch_*.pt`), convert to an
-eval-ready policy folder:
-
-```bash
-bash superpod/convert_ckpt_to_eval_pt.sh \
-    --src-ckpt /project/<GROUP>/lewm-plus/.stable-wm/checkpoints/pusht_h5_replicate_run/pusht_h5_replicate_weights.ckpt \
-    --run-name pusht_h5_replicate_eval
-```
-
-Then evaluate with:
-
-```bash
-bash superpod/evaluate_lewm.sh \
-    --config-name=pusht.yaml \
-    policy=pusht_h5_replicate_eval \
-    eval.num_eval=50 \
-    cache_dir=/workspace/.stable-wm \
-    eval.dataset_name=/workspace/.stable-wm/datasets/pusht/pusht_expert_train
-```
-
-Note: the converter helper runs in the GPU partition using the same Pyxis
-container stack as training/eval. On SuperPOD, Pyxis container hooks require
-`nvidia-container-cli`, which is not available on CPU-only jobs.
 
 ## 7. Step-by-Step: Interactive Debugging on a GPU Node
 
@@ -405,6 +414,14 @@ PY
 - **Backups.** `/scratch` is purged after 30 days. Keep checkpoints and final
   results in `/project`.
 - **VPN.** Off-campus access requires the HKUST VPN.
+- **Container env.** The Dockerfile sets `STABLEWM_HOME=/workspace/.stable-wm`,
+  but `srun --container-image` does not reliably propagate Dockerfile `ENV`.
+  Always pass `--container-env STABLEWM_HOME=/workspace/.stable-wm`.
+- **CPU partition limitations.** The `cpu` partition does not support Pyxis
+  containers reliably. Use the GPU partition for all containerized workloads.
+- **GPU quota.** Check `squota` before submitting long jobs. The group-level
+  GPU-minute limit may cause jobs to stay PENDING with reason
+  `AssocGrpGRESMinutes`. Short jobs under 1 hour are more likely to schedule.
 - **Acknowledgement.** If you publish work using SuperPOD, include:
   "The computations in this work were performed on the High Performance
   Computing facilities, HKUST SuperPOD, provided by ITSO, The Hong Kong
