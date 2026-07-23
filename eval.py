@@ -1,6 +1,10 @@
 import os
 
-os.environ["MUJOCO_GL"] = "egl"
+os.environ["MUJOCO_GL_BACKEND"] = "egl"
+from mujoco.egl import GLContext as _EGLContext
+_egl_ctx = _EGLContext(224, 224)
+_egl_ctx.make_current()
+
 
 import time
 from pathlib import Path
@@ -14,6 +18,8 @@ from sklearn import preprocessing
 from torchvision.transforms import v2 as transforms
 import stable_worldmodel as swm
 from stable_worldmodel.data.formats.hdf5 import HDF5Dataset
+
+import scripts.reacher_custom_env  # registers swm/ReacherCustom-v0
 
 def img_transform(cfg):
     transform = transforms.Compose(

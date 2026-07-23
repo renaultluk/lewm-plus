@@ -15,6 +15,11 @@ img_size: 224
 embed_dim: 192
 history_size: 3
 
+# Two-phase training controls
+sigreg_enabled: true     # False to disable SIGReg loss (e.g. fine-tuning phase)
+freeze_encoder: false    # True to freeze encoder weights (e.g. fine-tuning phase)
+ckpt_path: null          # Absolute path to a .ckpt to load as pretrained weights
+
 trainer:
   max_epochs: 100
   devices: auto

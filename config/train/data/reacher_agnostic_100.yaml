@@ -1,0 +1,9 @@
+dataset:
+  num_steps: ${eval:'${num_preds} + ${history_size}'}
+  frameskip: 5
+  name: reacher_agnostic_100.lance
+  keys_to_load:
+    - pixels
+    - action
+  keys_to_cache:
+    - action

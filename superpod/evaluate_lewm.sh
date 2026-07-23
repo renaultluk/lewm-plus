@@ -96,4 +96,5 @@ srun --container-image "$CONTAINER_PATH" \
      --container-mounts "$MOUNTS" \
      --container-writable \
      --container-workdir "$PROJECT_DIR" \
-     /usr/bin/env STABLEWM_HOME="${CONTAINER_STABLEWM_HOME}" /workspace/.venv/bin/python eval.py "${EXTRA_ARGS[@]}" "$@"
+     /usr/bin/env STABLEWM_HOME="${CONTAINER_STABLEWM_HOME}" \
+     /bin/bash -c 'mkdir -p /tmp/dm_pkgs && /root/.local/bin/uv pip install -q --target /tmp/dm_pkgs dm_control 2>/dev/null && PYTHONPATH=/tmp/dm_pkgs exec /workspace/.venv/bin/python eval.py "$@"' _ "${EXTRA_ARGS[@]}" "$@"

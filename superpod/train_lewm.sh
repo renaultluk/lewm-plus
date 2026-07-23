@@ -31,6 +31,7 @@ if [[ -z "${SLURM_JOB_ID:-}" ]]; then
 #SBATCH --open-mode=truncate
 #SBATCH --nodes=${TRAIN_NODES}
 #SBATCH --ntasks=${TRAIN_NTASKS}
+#SBATCH --ntasks-per-node=${TRAIN_GPUS_PER_NODE}
 #SBATCH --cpus-per-task=${CPUS_PER_TASK}
 #SBATCH --gpus-per-node=${TRAIN_GPUS_PER_NODE}
 #SBATCH --account=${SUPERPOD_ACCOUNT}
@@ -107,8 +108,12 @@ module load slurm 2>/dev/null || true
 # checkpoint root instead of ~/.cache/stable-pretraining.
 export SPT_CACHE_DIR="$STABLEWM_HOME"
 
-srun --container-image "$CONTAINER_PATH" \
+SRUN_NTASKS=${SLURM_NTASKS:-${TRAIN_NTASKS}}
+
+srun --ntasks="$SRUN_NTASKS" \
+     --container-image "$CONTAINER_PATH" \
      --container-mounts "$MOUNTS" \
      --container-writable \
      --container-workdir "$PROJECT_DIR" \
+     /usr/bin/env STABLEWM_HOME=/workspace/.stable-wm SPT_CACHE_DIR=/workspace/.stable-wm \
      /workspace/.venv/bin/python train.py "${EXTRA_ARGS[@]}" "$@"
